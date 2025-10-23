@@ -42,7 +42,7 @@ class BacktestingCapCOM:
     """
     initial_capital: float = 1_000_000
     COM: float = 0.125 / 100
-    borrow_Rate: float = 0.25
+    borrow_Rate: float = 0.25 / 100
 
 
 @dataclass
