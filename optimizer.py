@@ -1,6 +1,6 @@
 from libraries import *
 
-def dateset_split(data: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def dataset_split(data: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Splits a DataFrame into training, testing, and validation sets.
 
