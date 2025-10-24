@@ -1,25 +1,18 @@
 from libraries import *
 from functions import Params_Indicators
-from ta.momentum import RSIIndicator, WilliamsRIndicator, ROCIndicator, AwesomeOscillatorIndicator, StochasticOscillator
-from ta.volatility import BollingerBands, DonchianChannel
-from ta.volume import OnBalanceVolumeIndicator, VolumePriceTrendIndicator
-
 
 
 class Indicators:
     def __init__(self, params: Params_Indicators):
         self.params = params
         self.momentum = self.Momentum(params)
-        self.volatility = self.Volatility(self, params)
-        self.volume = self.Volume(self, params)
+        self.volatility = self.Volatility(params)
+        self.volume = self.Volume(params)
 
-
-    # 8 Indicadores de Momentum
     class Momentum:
         def __init__(self, params: Params_Indicators):
             self.params = params
 
-        # RSI
         def rsi(self, data: pd.DataFrame) -> pd.DataFrame:
             data = data.copy()
             data[f'RSI_7'] = RSIIndicator(
@@ -32,12 +25,10 @@ class Indicators:
                 data['Close'], window=self.params.rsi_20_window).rsi()
             return data
 
-        # Awesome Oscillator
-        def awesome_oscillator(self, data: pd.DataFrame) -> pd.DataFrame:
+        def aos(self, data: pd.DataFrame) -> pd.DataFrame:
             data = data.copy()
             ao = AwesomeOscillatorIndicator(
-                high=data['High'],
-                low=data['Low'],
+                high=data['High'], low=data['Low'],
                 window1=self.params.awe_window1,
                 window2=self.params.awe_window2,
                 fillna=False
@@ -45,36 +36,26 @@ class Indicators:
             data['Awesome_Oscillator'] = ao.awesome_oscillator()
             return data
 
-        # Williams %R
         def willr(self, data: pd.DataFrame) -> pd.DataFrame:
             data = data.copy()
             wr = WilliamsRIndicator(
-                high=data['High'],
-                low=data['Low'],
-                close=data['Close'],
+                high=data['High'], low=data['Low'], close=data['Close'],
                 lbp=self.params.williams_r_lbp
             )
             data['Williams_%R'] = wr.williams_r()
             return data
 
-        # ROC
         def roc(self, data: pd.DataFrame) -> pd.DataFrame:
             data = data.copy()
             roc = ROCIndicator(
-                close=data['Close'],
-                window=self.params.roc_window,
-                fillna=False
-            )
+                close=data['Close'], window=self.params.roc_window, fillna=False)
             data['ROC'] = roc.roc()
             return data
 
-        # Stochastic Oscillator
-        def stochastic_oscillator(self, data: pd.DataFrame) -> pd.DataFrame:
+        def stco(self, data: pd.DataFrame) -> pd.DataFrame:
             data = data.copy()
             stoch = StochasticOscillator(
-                high=data['High'],
-                low=data['Low'],
-                close=data['Close'],
+                high=data['High'], low=data['Low'], close=data['Close'],
                 window=self.params.stoch_osc_window,
                 smooth_window=self.params.stoch_osc_smooth,
                 fillna=False
@@ -83,57 +64,94 @@ class Indicators:
             data['Stoch_D'] = stoch.stoch_signal()
             return data
 
-    # 8 de volatilidad
-
     class Volatility:
-        def __init__(self, data: pd.DataFrame, params: Params_Indicators):
-            self.data = data
+        def __init__(self, params: Params_Indicators):
             self.params = params
 
         def atr(self, data: pd.DataFrame) -> pd.DataFrame:
             data = data.copy()
-
-        def bollinger_bandwidth(self, data: pd.DataFrame) -> pd.DataFrame:
-            data = data.copy()
-
-        def donchian_channel(self, data: pd.DataFrame) -> pd.DataFrame:
-            data = data.copy()
+            atr = AverageTrueRange(
+                high=data['High'], low=data['Low'], close=data['Close'],
+                window=self.params.atr_window, fillna=False
+            )
+            data['ATR'] = atr.average_true_range()
             return data
 
-        def chaikin_volatility(self, data: pd.DataFrame) -> pd.DataFrame:
+        def bb(self, data: pd.DataFrame) -> pd.DataFrame:
             data = data.copy()
-
-        def ulcer_index(self, data: pd.DataFrame) -> pd.DataFrame:
-            data = data.copy()
+            bb = BollingerBands(
+                close=data['Close'],
+                window=self.params.bollinger_window,
+                window_dev=self.params.bollinger_dev,
+                fillna=False
+            )
+            data['Bollinger_Mavg'] = bb.bollinger_mavg()
+            data['Bollinger_Hband'] = bb.bollinger_hband()
+            data['Bollinger_Lband'] = bb.bollinger_lband()
             return data
 
-        def keltner_channel(self, data: pd.DataFrame) -> pd.DataFrame:
+        def dchanel(self, data: pd.DataFrame) -> pd.DataFrame:
             data = data.copy()
+            dc = DonchianChannel(
+                high=data['High'], low=data['Low'],
+                window=self.params.donchian_window, fillna=False
+            )
+            data['Donchian_Hband'] = dc.donchian_channel_hband()
+            data['Donchian_Lband'] = dc.donchian_channel_lband()
+            data['Donchian_Mband'] = dc.donchian_channel_mband()
             return data
 
-        def volatility_stop(self, data: pd.DataFrame) -> pd.DataFrame:
+        def kc(self, data: pd.DataFrame) -> pd.DataFrame:
             data = data.copy()
+            kc = KeltnerChannel(
+                high=data['High'], low=data['Low'], close=data['Close'],
+                window=self.params.keltner_window,
+                window_atr=self.params.keltner_atr,
+                fillna=False
+            )
+            data['Keltner_Hband'] = kc.keltner_channel_hband()
+            data['Keltner_Lband'] = kc.keltner_channel_lband()
             return data
 
-        def parabolic_sar(self, data: pd.DataFrame) -> pd.DataFrame:
-            data = data.copy()
-            return data
-
-    # 4 de volumen
     class Volume:
-        def __init__(self, data: pd.DataFrame, params: Params_Indicators):
-            self.data = data
+        def __init__(self, params: Params_Indicators):
             self.params = params
 
-        def on_balance_volume(self, data: pd.DataFrame) -> pd.DataFrame:
+        def obv(self, data: pd.DataFrame) -> pd.DataFrame:
             data = data.copy()
-
-        def chaikin_money_flow(self, data: pd.DataFrame) -> pd.DataFrame:
-            data = data.copy()
-
-        def money_flow_index(self, data: pd.DataFrame) -> pd.DataFrame:
-            data = data.copy()
-
-        def volume_price_trend(self, data: pd.DataFrame) -> pd.DataFrame:
-            data = data.copy()
+            obv = OnBalanceVolumeIndicator(
+                close=data['Close'], volume=data['Volume'],
+                window=self.params.obv_window, fillna=False
+            )
+            data['OBV'] = obv.on_balance_volume()
             return data
+
+        def cmf(self, data: pd.DataFrame) -> pd.DataFrame:
+            data = data.copy()
+            cmf = ChaikinMoneyFlowIndicator(
+                high=data['High'], low=data['Low'], close=data['Close'],
+                volume=data['Volume'], window=self.params.cmf_window,
+                fillna=False
+            )
+            data['CMF'] = cmf.chaikin_money_flow()
+            return data
+
+        def Acc(self, data: pd.DataFrame) -> pd.DataFrame:
+            data = data.copy()
+            adi = AccDistIndexIndicator(
+                high=data['High'], low=data['Low'],
+                close=data['Close'], volume=data['Volume'],
+                fillna=False
+            )
+            data['ADI'] = adi.acc_dist_index()
+            return data
+
+        def vpt(self, data: pd.DataFrame) -> pd.DataFrame:
+            data = data.copy()
+            vpt = VolumePriceTrendIndicator(
+                close=data['Close'], volume=data['Volume'],
+                window=self.params.vpt_window, fillna=False
+            )
+            data['VPT'] = vpt.volume_price_trend()
+            return data
+

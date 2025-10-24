@@ -1,4 +1,6 @@
 from libraries import *
+from indicators import Indicators
+from functions import Params_Indicators
 
 
 def clean_data(activo: str, intervalo: str = "15y") -> pd.DataFrame:
@@ -51,3 +53,36 @@ def dataset_split(data: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.Da
     return train_data, test_data, validation_data
 
 
+def all_indicators(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculates all technical indicators and adds them to the DataFrame.
+    Parameters:
+    data : pd.DataFrame
+        Input data containing 'Close', 'High', and 'Low' columns.
+    Returns: pd.DataFrame
+        DataFrame with added technical indicators and NaN values removed.
+    """
+    data = data.copy()
+    indicators = Indicators(Params_Indicators())
+
+    # --- Momentum Indicators ---
+    data = indicators.momentum.rsi(data)
+    data = indicators.momentum.aos(data)
+    data = indicators.momentum.willr(data)
+    data = indicators.momentum.roc(data)
+    data = indicators.momentum.stco(data)
+
+    # --- Volatility Indicators ---
+    data = indicators.volatility.atr(data)
+    data = indicators.volatility.bb(data)
+    data = indicators.volatility.dchanel(data)
+    data = indicators.volatility.kc(data)
+
+    # --- Volume Indicators ---
+    data = indicators.volume.obv(data)
+    data = indicators.volume.cmf(data)
+    data = indicators.volume.Acc(data)
+    data = indicators.volume.vpt(data)
+
+    data.dropna(inplace=True)
+    return data

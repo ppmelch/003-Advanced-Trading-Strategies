@@ -38,7 +38,7 @@ class BacktestingCapCOM:
     COM : float
         Commission per trade in percentage (default: 0.125 / 100).
     borrow_Rate : float
-        Borrowing rate for short positions (default: 0.25).
+        Borrowing rate for short positions (default: 0.25 / 100).
     """
     initial_capital: float = 1_000_000
     COM: float = 0.125 / 100
@@ -104,6 +104,11 @@ class CNN_Params:
 
 @dataclass
 class Params_Indicators:
+    """
+    Parameters for technical indicators.
+    Attributes:
+        Momentum indicators, Volatility indicators, Volume indicators
+    """
     # --- Momentum Indicators (8) ---
     rsi_7_window: int = 7 #-
     rsi_10_window: int = 10 #-
@@ -111,31 +116,25 @@ class Params_Indicators:
     rsi_20_window: int = 20 #-
     awe_window1: int = 5 #- 
     awe_window2: int = 34 #-
-    macd_slow: int = 26 #-
     williams_r_lbp: int = 14 #-
     roc_window: int = 12 #-
     stoch_osc_window : int = 14 #-
     stoch_osc_smooth : int = 3 #-
 
-
-
     # --- Volatility Indicators (8) ---
-    bollinger_window: int = 20
-    bollinger_dev: int = 2
-    atr_window: int = 14
+    atr_window: int = 14 #-
+    bollinger_window: int = 20 #-
+    bollinger_dev: int = 2 #-
+    donchian_window: int = 20  #-
     keltner_window: int = 20
     keltner_atr: int = 10
-    donchian_window: int = 20
-    chaikin_vol_window: int = 10
-    ulcer_index_window: int = 14  # si quieres calcularlo también
 
     # --- Volume Indicators (4) ---
-    obv_window: int = 1
-    cmf_window: int = 20
-    vpt_window: int = 1
-    money_flow_index_window: int = 14
+    obv_window : int = 14 #-
+    cmf_window : int = 14 #-
+    vpt_window : int = 14 #-
 
-
+    
 def get_portfolio_value(cash: float, long_ops: list[Position], short_ops: list[Position], current_price: float, n_shares: float) -> float:
     """
     Calculates the total portfolio value at a given moment.

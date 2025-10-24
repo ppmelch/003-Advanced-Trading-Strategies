@@ -1,15 +1,13 @@
 # --- Standard library ---
 import os
 import warnings
-from dataclasses import dataclass
 import re, datetime as dt
+from dataclasses import dataclass
 
-
+warnings.filterwarnings("ignore")        
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-
-warnings.filterwarnings("ignore")          
 
 # --- Third-party libraries: Data analysis ---
 import ta
@@ -17,6 +15,9 @@ import numpy as np
 import pandas as pd
 import scipy as sp
 import yfinance as yf
+from ta.momentum import RSIIndicator, WilliamsRIndicator, ROCIndicator, AwesomeOscillatorIndicator, StochasticOscillator
+from ta.volatility import BollingerBands, DonchianChannel, KeltnerChannel, AverageTrueRange
+from ta.volume import OnBalanceVolumeIndicator, ChaikinMoneyFlowIndicator, VolumePriceTrendIndicator, AccDistIndexIndicator
 
 # --- Third-party libraries: Visualization ---
 import seaborn as sns
@@ -28,13 +29,11 @@ from IPython.display import display
 # --- Third-party libraries: Machine Learning / Optimization ---
 import mlflow
 import tensorflow as tf
-from sklearn.model_selection import TimeSeriesSplit
 from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPClassifier
+from sklearn.model_selection import TimeSeriesSplit
 from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.metrics import f1_score,accuracy_score, precision_score, recall_score, classification_report
-
-
 
 # --- Type hints ---
 from typing import List
