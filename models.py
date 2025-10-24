@@ -75,3 +75,5 @@ def model_CNN(X_scaled, y, lookback=CNN_Params.lookback, params=None, name="CNN 
 
     y_pred_cnn = (model.predict(X_cnn) > 0.5).astype(int).flatten()
     return model, final_metrics, y_pred_cnn
+
+

@@ -105,14 +105,19 @@ class CNN_Params:
 @dataclass
 class Params_Indicators:
     # --- Momentum Indicators (8) ---
-    rsi_window: int = 14
-    stoch_osc_window: int = 14
-    stoch_osc_smooth: int = 3
-    macd_fast: int = 12
-    macd_slow: int = 26
-    macd_signal: int = 9
-    cci_window: int = 20
-    williams_r_lbp: int = 14
+    rsi_7_window: int = 7 #-
+    rsi_10_window: int = 10 #-
+    rsi_14_window: int = 14 #-
+    rsi_20_window: int = 20 #-
+    awe_window1: int = 5 #- 
+    awe_window2: int = 34 #-
+    macd_slow: int = 26 #-
+    williams_r_lbp: int = 14 #-
+    roc_window: int = 12 #-
+    stoch_osc_window : int = 14 #-
+    stoch_osc_smooth : int = 3 #-
+
+
 
     # --- Volatility Indicators (8) ---
     bollinger_window: int = 20

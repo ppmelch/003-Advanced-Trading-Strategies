@@ -1,14 +1,12 @@
-
 from libraries import *
-from optimizer import dataset_split
 from indicators import Indicators
+from optimizer import dataset_split, clean_data
 
 
-# Añadir una función para los Datos 
-data = yf.download("AZO", start="2010-10-10", end="2025-10-10", progress=False).reset_index(drop=True)
-data = data[['Date', 'Open', 'High', 'Low', 'Close', 'Volume']].dropna()
-
+data = clean_data("AZO", "15y")
 train , test , validation = dataset_split(data)
+
+
 
 
 def main():
