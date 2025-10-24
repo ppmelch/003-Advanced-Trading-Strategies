@@ -49,6 +49,35 @@ class Config:
     cap_exp: float = 0.5
 
     
+@dataclass
+class Params_Indicators:
+    """
+    Parameters for technical indicators.
+    Attributes:
+        Momentum indicators, Volatility indicators, Volume indicators
+    """
+    # --- Momentum Indicators (8) ---
+    rsi_7_window: int = 7 
+    rsi_10_window: int = 10 
+    rsi_14_window: int = 14 
+    rsi_20_window: int = 20 
+    awe_window1: int = 5  
+    awe_window2: int = 34 
+    williams_r_lbp: int = 14 
+    roc_window: int = 12 
+    stoch_osc_window : int = 14 
+    stoch_osc_smooth : int = 3 
+
+    # --- Volatility Indicators (8) ---
+    atr_window: int = 14 
+    bollinger_window: int = 20 
+    bollinger_dev: int = 2 
+    donchian_window: int = 20  
+    keltner_window: int = 20
+    keltner_atr: int = 10
+
+    # --- Volume Indicators (4) ---
+    cmf_window : int = 14 
 
 
 @dataclass
@@ -106,37 +135,6 @@ class CNN_Params:
     epochs: int = 10
     batch_size: int = 32
 
-
-
-@dataclass
-class Params_Indicators:
-    """
-    Parameters for technical indicators.
-    Attributes:
-        Momentum indicators, Volatility indicators, Volume indicators
-    """
-    # --- Momentum Indicators (8) ---
-    rsi_7_window: int = 7 #-
-    rsi_10_window: int = 10 #-
-    rsi_14_window: int = 14 #-
-    rsi_20_window: int = 20 #-
-    awe_window1: int = 5 #- 
-    awe_window2: int = 34 #-
-    williams_r_lbp: int = 14 #-
-    roc_window: int = 12 #-
-    stoch_osc_window : int = 14 #-
-    stoch_osc_smooth : int = 3 #-
-
-    # --- Volatility Indicators (8) ---
-    atr_window: int = 14 #-
-    bollinger_window: int = 20 #-
-    bollinger_dev: int = 2 #-
-    donchian_window: int = 20  #-
-    keltner_window: int = 20
-    keltner_atr: int = 10
-
-    # --- Volume Indicators (4) ---
-    cmf_window : int = 14 #-
 
     
 def get_portfolio_value(cash: float, long_ops: list[Position], short_ops: list[Position], current_price: float, n_shares: float) -> float:

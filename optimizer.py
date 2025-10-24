@@ -50,9 +50,8 @@ def dataset_split(data: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.Da
     tuple
         train_data, test_data, validation_data
     """
-    n = len(data)
-    train_size = int(n * 0.6)
-    test_size = train_size + int(n * 0.2)
+    train_size = int(len(data) * 0.6)
+    test_size = int(len(data) * 0.2)
 
     train_data = data[:train_size]
     test_data = data[train_size:train_size + test_size]
@@ -94,4 +93,40 @@ def all_indicators(data: pd.DataFrame) -> pd.DataFrame:
     data = indicators.volume.vpt(data)
 
     data.dropna(inplace=True)
+    return data
+
+
+def get_signals(data: pd.DataFrame, horizon: int = 5, alpha: float = 0.02) -> pd.DataFrame:
+    """
+    Generate trading signals based on future price movements.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Must contain at least a 'Close' column with price data.
+    horizon : int, default=5
+        Number of periods ahead to calculate future returns.
+    alpha : float, default=0.02
+        Threshold (in decimal) for generating buy/sell signals.
+
+    Returns
+    -------
+    pd.DataFrame
+        Original DataFrame with additional columns:
+        - 'future_price': price after `horizon` periods
+        - 'future_return': percentage change over horizon
+        - 'signal': {1 = long, 0 = hold, -1 = short}
+    """
+    data = data.copy()
+
+    data["future_price"] = data["Close"].shift(-horizon)
+    data["future_return"] = (data["future_price"] - data["Close"]) / data["Close"]
+
+    data["signal"] = np.where(
+        data["future_return"] > alpha, 1,
+        np.where(data["future_return"] < -alpha, -1, 0)
+    )
+
+    data = data.iloc[:-horizon].copy()
+
     return data
