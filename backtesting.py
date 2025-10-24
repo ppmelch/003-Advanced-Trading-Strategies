@@ -1,8 +1,7 @@
 from libraries import *
 from metrics import Metrics
-from indicators import Indicadores
-from functions import Position, BacktestingCapCOM
-from functions import Params_Indicators, get_portfolio_value
+from indicators import Indicators
+from functions import Position, Config , Params_Indicators, get_portfolio_value
 
 
 #ARREGLAR ESTO PARA QUE USE LOS INDICADORES TECNICOS
@@ -14,7 +13,7 @@ def backtest(data: pd.DataFrame, params: Params_Indicators, initial_cash: float 
     """
 
     # --- 1. Preparar DataFrame de indicadores ---
-    indicators = Indicadores(params=params)
+    indicators = Indicators(params=params)
     data_ind = indicators.get_data(data)
     data_ind = data_ind.reset_index(drop=True)
 
@@ -44,12 +43,12 @@ def backtest(data: pd.DataFrame, params: Params_Indicators, initial_cash: float 
     historic = historic.dropna().reset_index(drop=True)
 
     # --- 3. Configuración de capital y comisiones ---
-    cash = BacktestingCapCOM.initial_capital if initial_cash is None else initial_cash
-    COM = BacktestingCapCOM.COM
-    Borrow_Rate = BacktestingCapCOM.Borrow_Rate
-    stop_loss = 0.02
-    take_profit = 0.04
-    capital_pct_exp = 0.5
+    cash = Config.initial_capital if initial_cash is None else initial_cash
+    COM = Config.COM
+    Borrow_Rate = Config.BRate
+    stop_loss = Config.sl
+    take_profit = Config.tp
+    capital_pct_exp = Config.cap_exp
 
     # --- 4. Inicializar tracking ---
     active_long_positions, active_short_positions, port_value = [], [], [cash]

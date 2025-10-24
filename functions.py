@@ -21,14 +21,15 @@ class Position:
     """
     n_shares: float
     price: float
-    sl: float
-    tp: float
+    sl: float 
+    tp: float 
+    cap_exp: float 
     profit: float = None
     exit_price: float = None
 
 
 @dataclass
-class BacktestingCapCOM:
+class Config:
     """
     Backtesting configuration with initial capital and commission.
 
@@ -37,12 +38,17 @@ class BacktestingCapCOM:
         Initial capital for backtesting (default: 1_000_000).
     COM : float
         Commission per trade in percentage (default: 0.125 / 100).
-    borrow_Rate : float
+    borrow_Rate : float6
         Borrowing rate for short positions (default: 0.25 / 100).
     """
     initial_capital: float = 1_000_000
     COM: float = 0.125 / 100
-    borrow_Rate: float = 0.25 / 100
+    BRate: float = 0.25 / 100
+    sl : float = 0.02
+    tp : float = 0.04
+    cap_exp: float = 0.5
+
+    
 
 
 @dataclass
@@ -130,9 +136,7 @@ class Params_Indicators:
     keltner_atr: int = 10
 
     # --- Volume Indicators (4) ---
-    obv_window : int = 14 #-
     cmf_window : int = 14 #-
-    vpt_window : int = 14 #-
 
     
 def get_portfolio_value(cash: float, long_ops: list[Position], short_ops: list[Position], current_price: float, n_shares: float) -> float:

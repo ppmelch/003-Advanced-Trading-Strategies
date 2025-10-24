@@ -93,7 +93,7 @@ class Indicators:
         def dchanel(self, data: pd.DataFrame) -> pd.DataFrame:
             data = data.copy()
             dc = DonchianChannel(
-                high=data['High'], low=data['Low'],
+                high=data['High'], low=data['Low'], close=data['Close'],
                 window=self.params.donchian_window, fillna=False
             )
             data['Donchian_Hband'] = dc.donchian_channel_hband()
@@ -121,7 +121,7 @@ class Indicators:
             data = data.copy()
             obv = OnBalanceVolumeIndicator(
                 close=data['Close'], volume=data['Volume'],
-                window=self.params.obv_window, fillna=False
+                fillna=False
             )
             data['OBV'] = obv.on_balance_volume()
             return data
@@ -150,7 +150,7 @@ class Indicators:
             data = data.copy()
             vpt = VolumePriceTrendIndicator(
                 close=data['Close'], volume=data['Volume'],
-                window=self.params.vpt_window, fillna=False
+                fillna=False
             )
             data['VPT'] = vpt.volume_price_trend()
             return data

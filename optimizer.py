@@ -1,27 +1,35 @@
 from libraries import *
 from indicators import Indicators
 from functions import Params_Indicators
+from dateutil.relativedelta import relativedelta
 
 
 def clean_data(activo: str, intervalo: str = "15y") -> pd.DataFrame:
     """
-    Downloads and cleans stock data for a given asset and interval.
+    Downloads historical stock data from Yahoo Finance.
+
     Parameters:
     activo : str
         Stock ticker symbol.
     intervalo : str
-        Time interval for data retrieval (e.g., '15y' for 15 years).
-    Returns:
-    pd.DataFrame
-        Cleaned DataFrame with stock data.
+        Time interval for data (e.g., '1y', '6mo', '15y').
+
+    Returns: pd.DataFrame
+        DataFrame with historical stock data.
     """
     n, u = re.match(r"(\d+)([dwmy])", intervalo.lower()).groups()
     delta = {"d": "days", "w": "weeks", "m": "months", "y": "years"}[u]
     start = dt.date.today() - relativedelta(**{delta: int(n)})
     data = yf.download(activo, start=start, end=dt.date.today(
-    )+dt.timedelta(1), interval="1d", progress=False).reset_index()
-    data.rename(columns={"Datetime": "Date"}, inplace=True)
-    return data[["Date", "Open", "High", "Low", "Close", "Volume"]].dropna()
+    )+dt.timedelta(1), interval="1d", progress=False)
+    if isinstance(data.columns, pd.MultiIndex):
+        data.columns = data.columns.get_level_values(0)
+    data = data.reset_index()[['Date', 'Open', 'High',
+                               'Low', 'Close', 'Volume']].dropna()
+    for c in ['Open', 'High', 'Low', 'Close', 'Volume']:
+        if isinstance(data[c], pd.DataFrame):
+            data[c] = data[c].squeeze("columns")
+    return data
 
 
 def dataset_split(data: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -63,6 +71,7 @@ def all_indicators(data: pd.DataFrame) -> pd.DataFrame:
         DataFrame with added technical indicators and NaN values removed.
     """
     data = data.copy()
+
     indicators = Indicators(Params_Indicators())
 
     # --- Momentum Indicators ---
