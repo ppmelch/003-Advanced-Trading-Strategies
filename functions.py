@@ -79,7 +79,6 @@ class Params_Indicators:
     # --- Volume Indicators (4) ---
     cmf_window : int = 14 
 
-
 @dataclass
 class MLP_Params:
     """
@@ -136,7 +135,11 @@ class CNN_Params:
     batch_size: int = 32
 
 
+
+
     
+
+
 def get_portfolio_value(cash: float, long_ops: list[Position], short_ops: list[Position], current_price: float, n_shares: float) -> float:
     """
     Calculates the total portfolio value at a given moment.
