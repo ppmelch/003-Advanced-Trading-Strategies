@@ -1,5 +1,4 @@
 from libraries import * 
-from indicators import Indicators
 
 class normalize_all_indicators:
     class Momentum:
@@ -103,3 +102,29 @@ class normalize_all_indicators:
             if 'VPT' in data.columns:
                 data['VPT'] = (data['VPT'] - data['VPT'].mean()) / data['VPT'].std()
             return data
+    
+    class Price:
+        def normaliza_all_indicators_close(self, data: pd.DataFrame) -> pd.DataFrame:
+            data = data.copy()
+            if 'Close' in data.columns:
+                data['Close'] =  normalize_all_indicators._zscore(data['Close'])
+            return data
+        
+class normalize_price:
+    class Price:
+        @staticmethod
+        def _zscore(series: pd.Series) -> pd.Series:
+            mean = series.mean()
+            std = series.std(ddof=0)
+            if std == 0 or not pd.notna(std):
+                std = 1
+            return (series - mean) / std
+
+        def close(self, data: pd.DataFrame) -> pd.DataFrame:
+            data = data.copy()
+            if 'Close' in data.columns:
+                data['Close_Z'] = self._zscore(data['Close'])
+            return data
+
+        
+    

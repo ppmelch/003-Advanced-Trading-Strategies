@@ -81,49 +81,23 @@ class Params_Indicators:
 
 @dataclass
 class MLP_Params:
-    """
-    Parameters for MLP Classifier.
-     Attributes:
-     hidden_layer_sizes : tuple
-        Size of hidden layers.
-    activation : str
-        Activation function.
-    solver : str
-        Solver for weight optimization.
-    max_iter : int
-        Maximum number of iterations.
-    """
-
-    hidden_layer_sizes: tuple = (64, 32)
-    activation: str = 'relu'
-    solver: str = 'adam'
-    max_iter: int = 10000
-
+    """Hyperparameters for a Keras-based MLP model."""
+    dense_layers: int = 2           
+    dense_units: int = 64            
+    activation: str = "relu"        
+    optimizer: str = "adam"          
+    output_units: int = 3            
+    output_activation: str = "softmax" 
+    loss: str = "sparse_categorical_crossentropy" 
+    metrics: tuple = ("accuracy",)   
+    batch_size: int = 32
+    epochs: int = 10
+    verbose : int = 2
+    Average : str = 'weighted'
 
 @dataclass
 class CNN_Params:
-    """
-    Parameters for CNN model.
-    Attributes:
-        lookback : int
-            Number of previous time steps to consider.
-        conv_layers : int
-            Number of convolutional layers.
-        filters : int
-            Number of filters in the convolutional layers.
-        kernel_size : int       
-            Size of the convolutional kernels.
-        dense_units : int
-            Number of units in the dense layer.
-        activation : str
-            Activation function.
-        optimizer : str
-            Optimizer for training.
-        epochs : int
-            Number of training epochs.
-        batch_size : int
-            Size of training batches.
-    """
+    """Hyperparameters for a Keras-based CNN model."""
     lookback: int = 20
     conv_layers: int = 2
     filters: int = 32
@@ -131,13 +105,14 @@ class CNN_Params:
     dense_units: int = 64
     activation: str = 'relu'
     optimizer: str = 'adam'
+    output_units: int = 3            
+    output_activation: str = "softmax" 
     epochs: int = 10
     batch_size: int = 32
-
-
-
-
-    
+    metrics: tuple = ("accuracy",)  
+    batch_size: int = 32
+    verbose : int = 2
+    Average : str = 'weighted'
 
 
 def get_portfolio_value(cash: float, long_ops: list[Position], short_ops: list[Position], current_price: float, n_shares: float) -> float:
