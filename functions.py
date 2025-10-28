@@ -23,7 +23,6 @@ class Position:
     price: float
     sl: float 
     tp: float 
-    cap_exp: float 
     profit: float = None
     exit_price: float = None
 
@@ -45,8 +44,8 @@ class Config:
     COM: float = 0.125 / 100
     BRate: float = 0.25 / 100
     sl : float = 0.02
-    tp : float = 0.04
-    cap_exp: float = 0.5
+    tp : float = 0.05
+    cap_exp: float = 0.3
 
     
 @dataclass
@@ -108,11 +107,11 @@ class CNN_Params:
     output_units: int = 3            
     output_activation: str = "softmax" 
     epochs: int = 10
-    batch_size: int = 32
+    batch_size: int = 252
     metrics: tuple = ("accuracy",)  
-    batch_size: int = 32
     verbose : int = 2
     Average : str = 'weighted'
+    loss : str = "sparse_categorical_crossentropy"
 
 
 def get_portfolio_value(cash: float, long_ops: list[Position], short_ops: list[Position], current_price: float, n_shares: float) -> float:

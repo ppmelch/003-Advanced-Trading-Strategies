@@ -125,6 +125,3 @@ class normalize_price:
             if 'Close' in data.columns:
                 data['Close_Z'] = self._zscore(data['Close'])
             return data
-
-        
-    

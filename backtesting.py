@@ -1,141 +1,90 @@
 from libraries import *
-from metrics import Metrics
-from indicators import Indicators
-from functions import Position, Config , Params_Indicators, get_portfolio_value
+from functions import Position, Config, get_portfolio_value
+
+def _resolve_signals(df: pd.DataFrame, col: str = "signal") -> pd.Series:
+    """Devuelve una serie con señales (-1, 0, 1)."""
+    if col in df.columns:
+        s = df[col]
+    elif "final_signal" in df.columns:
+        s = df["final_signal"]
+    else:
+        s = pd.Series(0, index=df.index)
+    return s.where(s.isin([-1, 0, 1]), 0).astype(int)
 
 
-#ARREGLAR ESTO PARA QUE USE LOS INDICADORES TECNICOS
-
-def backtest(data: pd.DataFrame, params: Params_Indicators, initial_cash: float = None) -> tuple[list, dict, float]:
+def backtest(
+    data: pd.DataFrame,
+    cash: float = Config.initial_capital,
+    sl: float = Config.sl,
+    tp: float = Config.tp,
+    COM: float = Config.COM,
+    cap_exp: float = Config.cap_exp
+) -> tuple[pd.Series, float, float, int, int, int, int, list[dict], list[dict]]:
     """
-    Backtest usando señales derivadas de indicadores técnicos (RSI, Momentum, Volatility)
-    con filtro de volatilidad y gestión de posiciones (long/short) incluyendo Borrow Rate.
+    Backtest limpio y directo: usa señales -1, 0, 1 para abrir/cerrar posiciones.
     """
+    df = data.copy()
+    signals = _resolve_signals(df)
+    longs, shorts = [], []
+    port_hist, wins, trades = [], 0, 0
+    buy = sell = hold = 0
 
-    # --- 1. Preparar DataFrame de indicadores ---
-    indicators = Indicators(params=params)
-    data_ind = indicators.get_data(data)
-    data_ind = data_ind.reset_index(drop=True)
+    for idx, row in df.iterrows():
+        price = float(row["Close"])
+        sig = int(signals.loc[idx])
 
-    # --- 2. Señales ---
-    # RSI
-    buy_rsi = data_ind['RSI'] < 30
-    sell_rsi = data_ind['RSI'] > 70
-
-    # Momentum (ejemplo usando ROC y CMI)
-    buy_momentum = (data_ind['ROC'] > 0) & (data_ind['CMI'] > 0)
-    sell_momentum = (data_ind['ROC'] < 0) & (data_ind['CMI'] < 0)
-
-    # Volatility filter (Bollinger Bands)
-    buy_volatility = data_ind['Close'] < data_ind['bollinger_lower']
-    sell_volatility = data_ind['Close'] > data_ind['bollinger_upper']
-
-    # --- Volatility cuantil como filtro de mercado estable ---
-    vol_window = 20
-    vol_quantile = 0.5
-    vol = data_ind['Close'].rolling(vol_window).std()
-    low_vol = vol < vol.quantile(vol_quantile)
-
-    # --- Combinar señales ---
-    historic = data_ind.copy()
-    historic['buy_signal'] = ((buy_rsi + 2 * buy_momentum) >= 2) & low_vol
-    historic['sell_signal'] = ((sell_rsi + 2 * sell_momentum) >= 2) & low_vol
-    historic = historic.dropna().reset_index(drop=True)
-
-    # --- 3. Configuración de capital y comisiones ---
-    cash = Config.initial_capital if initial_cash is None else initial_cash
-    COM = Config.COM
-    Borrow_Rate = Config.BRate
-    stop_loss = Config.sl
-    take_profit = Config.tp
-    capital_pct_exp = Config.cap_exp
-
-    # --- 4. Inicializar tracking ---
-    active_long_positions, active_short_positions, port_value = [], [], [cash]
-    closed_positions = []
-
-    # --- 5. Loop de backtest ---
-    for i, row in historic.iterrows():
-        price = row.Close
-        n_shares = (cash * capital_pct_exp) / price
-
-        # --- Cerrar posiciones LONG ---
-        for pos in active_long_positions.copy():
-            if price >= pos.tp or price <= pos.sl:
+        # --- Cerrar largos ---
+        for pos in longs.copy():
+            if price <= pos.sl or price >= pos.tp:
+                pnl = (price - pos.price) * pos.n_shares
                 cash += price * pos.n_shares * (1 - COM)
-                pos.profit = (price - pos.price) * pos.n_shares
-                closed_positions.append(pos)
-                active_long_positions.remove(pos)
+                wins += pnl >= 0
+                trades += 1
+                longs.remove(pos)
 
-        # --- Cerrar posiciones SHORT ---
-        for pos in active_short_positions.copy():
-            days_held = i - pos.open_index
-            borrow_cost = (Borrow_Rate / 252) * days_held * pos.price * pos.n_shares
-            pnl = (pos.price - price) * pos.n_shares - borrow_cost
+        # --- Cerrar cortos ---
+        for pos in shorts.copy():
+            if price >= pos.sl or price <= pos.tp:
+                pnl = (pos.price - price) * pos.n_shares
+                cash += pnl - price * pos.n_shares * COM
+                wins += pnl >= 0
+                trades += 1
+                shorts.remove(pos)
 
-            if price <= pos.tp or price >= pos.sl:
-                com = price * pos.n_shares * COM
-                cash += pnl - com
-                pos.profit = pnl
-                closed_positions.append(pos)
-                active_short_positions.remove(pos)
+        # --- Nuevas operaciones ---
+        if sig == 1 and not longs:
+            n = (cash * cap_exp / price)
+            cost = price * n * (1 + COM)
+            if cash >= cost:
+                cash -= cost
+                longs.append(Position(n, price, price*(1-sl), price*(1+tp)))
+                buy += 1
+        elif sig == -1 and not shorts:
+            n = (cash * cap_exp / price)
+            fee = price * n * COM
+            if cash >= fee:
+                cash -= fee
+                shorts.append(Position(n, price, price*(1+sl), price*(1-tp)))
+                sell += 1
+        else:
+            hold += 1
 
-        # --- Abrir LONG ---
-        if row.buy_signal and not active_long_positions and not active_short_positions:
-            if cash >= price * n_shares * (1 + COM):
-                cash -= price * n_shares * (1 + COM)
-                active_long_positions.append(Position(
-                    price=price, n_shares=n_shares,
-                    sl=price * (1 - stop_loss), tp=price * (1 + take_profit),
-                    open_index=i
-                ))
+        # --- Valor actual del portafolio ---
+        value = get_portfolio_value(cash, longs, shorts, price)
+        port_hist.append(value)
 
-        # --- Abrir SHORT ---
-        if row.sell_signal and not active_short_positions and not active_long_positions:
-            if cash >= price * n_shares * (1 + COM):
-                cash -= price * n_shares * (1 + COM)
-                active_short_positions.append(Position(
-                    price=price, n_shares=n_shares,
-                    sl=price * (1 + stop_loss), tp=price * (1 - take_profit),
-                    open_index=i
-                ))
+    # --- Cierre final ---
+    if len(df) > 0:
+        last_price = df["Close"].iloc[-1]
+        for p in longs:
+            cash += last_price * p.n_shares * (1 - COM)
+        for p in shorts:
+            cash += (p.price - last_price) * p.n_shares - last_price * p.n_shares * COM
 
-        # --- Valor del portfolio ---
-        port_value.append(get_portfolio_value(
-            cash, active_long_positions, active_short_positions, price, n_shares
-        ))
+    win_rate = wins / trades if trades > 0 else 0
+    total_trades = trades
+    data_drift_results = []
+    p_value_results = []
 
-    # --- 6. Cerrar posiciones restantes ---
-    for pos in active_long_positions:
-        cash += price * pos.n_shares * (1 - COM)
-        pos.profit = (price - pos.price) * pos.n_shares
-        closed_positions.append(pos)
-
-    for pos in active_short_positions:
-        days_held = len(historic) - pos.open_index
-        borrow_cost = (Borrow_Rate / 252) * days_held * pos.price * pos.n_shares
-        pnl = (pos.price - price) * pos.n_shares - borrow_cost
-        com = price * pos.n_shares * COM
-        cash += pnl - com
-        pos.profit = pnl
-        closed_positions.append(pos)
-
-    # --- 7. Métricas ---
-    port_series = pd.Series(port_value).replace(0, np.nan).dropna()
-    metrics_obj = Metrics(port_series)
-    final_value = port_value[-1]
-    initial_value = port_value[0]
-    profit = final_value - initial_value
-
-    metrics_dict = {
-        "Calmar": metrics_obj.calmar,
-        "Sharpe": metrics_obj.sharpe,
-        "Sortino": metrics_obj.sortino,
-        "Maximum Drawdown": metrics_obj.max_drawdown,
-        "Win Rate": Metrics.win_rate(closed_positions),
-        "Total Return (%)": (final_value - initial_value) / initial_value * 100,
-        "Profit ($)": f"${profit:,.2f}",
-        "Final Capital ($)": f"${cash:,.2f}"
-    }
-
-    return port_value, metrics_dict, cash
+    port_series = pd.Series(port_hist, index=df.index)
+    return port_series, cash, win_rate, buy, sell, hold, total_trades, data_drift_results, p_value_results

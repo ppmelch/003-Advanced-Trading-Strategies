@@ -1,8 +1,9 @@
-from normalization import normalize_all_indicators , normalize_price
 from libraries import *
 from indicators import Indicators
 from functions import Params_Indicators
 from dateutil.relativedelta import relativedelta
+
+from normalization import normalize_all_indicators, normalize_price
 
 def clean_data(activo: str, intervalo: str = "15y") -> pd.DataFrame:
     """
@@ -229,13 +230,17 @@ def process_dataset(data: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.
     """
     Returns: tuple
         data : pd.DataFrame -> base data con señales
-        data_indicators : pd.DataFrame -> indicadores normalizados
-        data_price : pd.DataFrame -> precio normalizado
+        data_indicators : pd.DataFrame -> indicadores normalizados (con 'signal')
+        data_price : pd.DataFrame -> precio normalizado (sin leakage)
     """
     data = all_indicators(data)
     data = get_signals(data)
-    data_indicators = all_normalization_indicators(data)
-    data_price = all_normalization_price(data)
+
+    data_indicators = all_normalization_indicators(data).copy()
+    data_price = all_normalization_price(data).copy()
+
     data_indicators.dropna(inplace=True)
     data_price.dropna(inplace=True)
+
     return data, data_indicators, data_price
+

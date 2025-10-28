@@ -1,35 +1,39 @@
 from libraries import *
-from models import model_MLP, model_CNN
-from functions import CNN_Params , MLP_Params
+from prints import results
+from models import  model_name_version
 from data_processing import dataset_split, clean_data, process_dataset, target
-
 
 def main():
     data = clean_data("AZO", "15y")
-    train, test, validation = dataset_split(data)
+    train, test, val = dataset_split(data)
 
-    train_data, train_data_indicators, train_data_price = process_dataset(train)
-    x_train_p, y_train_p = target(train_data_price)
+    train_data, train_ind, train_price = process_dataset(train)
+    test_data,  test_ind,  test_price  = process_dataset(test)
+    val_data,   val_ind,   val_price   = process_dataset(val)
 
-    test_data, test_data_indicators, test_data_price = process_dataset(test)
-    validation_data, validation_data_indicators, validation_data_price = process_dataset(validation)
-
-    data_combined = pd.concat([test_data , validation_data]).sort_index()
-    data_combined_indicators = pd.concat([test_data_indicators , validation_data_indicators]).sort_index()
-    data_combined_price = pd.concat([test_data_price , validation_data_price]).sort_index()
-
-    # Separar target variable for combined ---
-    x_train , y_train = target(data_combined_price)
-    x_test , y_test = target(test_data_price)
-    x_validation , y_val = target(validation_data_price)
-
-    # -- Model MLP --
-    
+    y_train = target(train_price)
+    y_test  = target(test_price)
+    y_val   = target(val_price)
 
 
+    datasets = {
+        "train": (train_data, train_ind),
+        "test":  (test_data,  test_ind),
+        "val":   (val_data,   val_ind),
+    }
+
+    for name, (df, X) in datasets.items():
+        assert hasattr(df, "reset_index"), f"{name}: data debe ser DataFrame"
+        assert len(df) == len(X), f"{name}: |data| != |X| ({len(df)} vs {len(X)})"
 
 
-    # -- Model CNN --
+    model_MLP = model_name_version("MLP_Model_003", "13")
+    print("\n=== Results for MLP Model ===\n")
+    results(datasets, model_MLP)
+
+    model_CNN = model_name_version("CNN_Model_003", "13")
+    print("\n=== Results for CNN Model ===\n")
+    results(datasets, model_CNN)
 
 if __name__ == "__main__":
     main()
