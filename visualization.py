@@ -1,42 +1,35 @@
 from libraries import *
 
-def plot_tran_test_validation(port_value_train, port_value_test, port_value_val):
+
+def plot_test_validation(port_value_test, port_value_val):
+    """
+    Plotea test y validation de forma continua:
+    - Test empieza en 1,000,000
+    - Validation arranca donde terminó test
+    """
     plt.figure(figsize=(12, 6))
 
-    portfolios = {
-        "train": port_value_train,
-        "test": port_value_test,
-        "val": port_value_val
-    }
+    base_value = 1_000_000
 
-    for name, values in portfolios.items():
-        plt.plot(values, color=colors, marker="o", markersize=3, label=name)
+    # Normaliza test para iniciar en 1M
+    test_scaled = port_value_test / port_value_test.iloc[0] * base_value
 
-    plt.title("Train, Test and Validation Portfolio", fontsize=14, fontweight="bold")
-    plt.xlabel("Timestep")
-    plt.ylabel("Portfolio Value ($)")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
+    # Escala val para que arranque donde terminó test
+    val_scaled = port_value_val / port_value_val.iloc[0] * test_scaled.iloc[-1]
 
+    # Ejes X continuos
+    x_test = range(len(test_scaled))
+    x_val = range(len(test_scaled), len(test_scaled) + len(val_scaled))
 
-
-def plot_test_validation(port_value_test, port_value_val) -> None:
-    """Plotea el portafolio de test + validación."""
-    plt.figure(figsize=(12, 6))
-
-    x_test = range(len(port_value_test))
-    x_val = range(len(port_value_test), len(port_value_test) + len(port_value_val))
-
-    plt.plot(x_test, port_value_test, label="Test", color="royalblue", lw=2)
-    plt.plot(x_val, port_value_val, label="Validation", color="darkorange", lw=2)
+    # Plot
+    plt.plot(x_test, test_scaled, label="Test", color="royalblue", lw=2)
+    plt.plot(x_val, val_scaled, label="Validation", color="orange", lw=2)
 
     plt.title("Test + Validation Portfolio", fontsize=14, fontweight="bold")
     plt.xlabel("Timestep")
     plt.ylabel("Portfolio Value ($)")
     plt.legend()
-    plt.grid(alpha=0.3)
+    plt.grid(True)
     plt.tight_layout()
     plt.show()
 

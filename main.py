@@ -27,11 +27,11 @@ def main():
         assert len(df) == len(X), f"{name}: |data| != |X| ({len(df)} vs {len(X)})"
 
 
-    model_MLP = model_name_version("MLP_Model_003", "13")
+    model_MLP = model_name_version("MLP_Model_003", "6")
     print("\n=== Results for MLP Model ===\n")
     results(datasets, model_MLP)
 
-    model_CNN = model_name_version("CNN_Model_003", "13")
+    model_CNN = model_name_version("CNN_Model_003", "6")
     print("\n=== Results for CNN Model ===\n")
     results(datasets, model_CNN)
 

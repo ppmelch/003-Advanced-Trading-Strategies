@@ -114,7 +114,7 @@ def all_indicators(data: pd.DataFrame) -> pd.DataFrame:
     data.dropna(inplace=True)
     return data
 
-def get_signals(data: pd.DataFrame, horizon: int = 5, alpha: float = 0.02) -> pd.DataFrame:
+def get_signals(data: pd.DataFrame, horizon: int = 5, alpha: float = 0.03) -> pd.DataFrame:
     """
     Generate trading signals based on future price movements.
 
@@ -130,9 +130,7 @@ def get_signals(data: pd.DataFrame, horizon: int = 5, alpha: float = 0.02) -> pd
     Returns
     -------
     pd.DataFrame
-        Original DataFrame with additional columns:
-        - 'future_price': price after horizon periods
-        - 'future_return': percentage change over horizon
+        Original DataFrame with additional column:
         - 'signal': {1 = long, 0 = hold, -1 = short}
     """
     data = data.copy()
@@ -144,10 +142,11 @@ def get_signals(data: pd.DataFrame, horizon: int = 5, alpha: float = 0.02) -> pd
         data["future_return"] > alpha, 1,
         np.where(data["future_return"] < -alpha, -1, 0)
     )
-
     data = data.iloc[:-horizon].copy()
+    data.drop(columns=["future_price", "future_return"], inplace=True)
 
     return data
+
 
 def all_normalization_indicators(data: pd.DataFrame) -> pd.DataFrame:
     """

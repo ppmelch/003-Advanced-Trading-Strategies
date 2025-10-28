@@ -18,10 +18,12 @@ def backtest(
     sl: float = Config.sl,
     tp: float = Config.tp,
     COM: float = Config.COM,
-    cap_exp: float = Config.cap_exp
+    cap_exp: float = Config.cap_exp,
+    borrow_rate_annual: float = 0.0025
 ) -> tuple[pd.Series, float, float, int, int, int, int, list[dict], list[dict]]:
     """
-    Backtest limpio y directo: usa señales -1, 0, 1 para abrir/cerrar posiciones.
+    Backtest con comisiones, stop-loss, take-profit y borrow rate para cortos.
+    Usa señales -1, 0, 1 para abrir/cerrar posiciones.
     """
     df = data.copy()
     signals = _resolve_signals(df)
@@ -29,9 +31,17 @@ def backtest(
     port_hist, wins, trades = [], 0, 0
     buy = sell = hold = 0
 
+    # tasa diaria equivalente al borrow rate anual
+    borrow_rate_daily = Config.BRate / 252
+
     for idx, row in df.iterrows():
         price = float(row["Close"])
         sig = int(signals.loc[idx])
+
+        # --- Cobro de tasa de préstamo por cortos abiertos ---
+        for pos in shorts:
+            interest_cost = price * pos.n_shares * borrow_rate_daily
+            cash -= interest_cost  # resta el costo diario al efectivo
 
         # --- Cerrar largos ---
         for pos in longs.copy():
@@ -52,14 +62,14 @@ def backtest(
                 shorts.remove(pos)
 
         # --- Nuevas operaciones ---
-        if sig == 1 and not longs:
+        if sig == 1 and not longs:  # abrir largo
             n = (cash * cap_exp / price)
             cost = price * n * (1 + COM)
             if cash >= cost:
                 cash -= cost
                 longs.append(Position(n, price, price*(1-sl), price*(1+tp)))
                 buy += 1
-        elif sig == -1 and not shorts:
+        elif sig == -1 and not shorts:  # abrir corto
             n = (cash * cap_exp / price)
             fee = price * n * COM
             if cash >= fee:
@@ -69,8 +79,16 @@ def backtest(
         else:
             hold += 1
 
+
+        if longs:
+            n_shares = longs[-1].n_shares
+        elif shorts:
+            n_shares = shorts[-1].n_shares
+        else:
+            n_shares = 0  # sin posiciones abiertas
+
         # --- Valor actual del portafolio ---
-        value = get_portfolio_value(cash, longs, shorts, price)
+        value = get_portfolio_value(cash, longs, shorts, price, n_shares)
         port_hist.append(value)
 
     # --- Cierre final ---
@@ -79,6 +97,7 @@ def backtest(
         for p in longs:
             cash += last_price * p.n_shares * (1 - COM)
         for p in shorts:
+            # se liquida el corto y se descuenta la comisión
             cash += (p.price - last_price) * p.n_shares - last_price * p.n_shares * COM
 
     win_rate = wins / trades if trades > 0 else 0

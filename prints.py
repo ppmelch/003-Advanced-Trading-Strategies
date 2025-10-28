@@ -20,18 +20,25 @@ def show_results(cash: float, port_value: pd.Series, win_rate: float,
     print(f"Operaciones -> Buy: {buy}, Sell: {sell}, Hold: {hold}, Total: {total_trades}")
 
 
+
+
 def results(datasets: dict, model) -> None:
     print(f"\n================== RESULTS FOR MODEL: {model.name.upper()} ==================\n")
 
-    # 🔹 Inicializa el capital antes del primer dataset
-    cash = Config.initial_capital  
+    cash = Config.initial_capital
+
+    # acumuladores para graficar al final
+    pv_train = None
+    pv_test = None
+    pv_val = None
 
     for dataset_name, (data, x_data) in datasets.items():
         print(f"--- {dataset_name.upper()} RESULTS ---")
 
-        # predicciones
+        # predicciones -> final_signal
         y_pred = model.predict(x_data, verbose=0)
         y_pred_classes = np.argmax(y_pred, axis=1)
+        data = data.copy()
         data["final_signal"] = y_pred_classes - 1
 
         # backtest con cash encadenado
@@ -39,5 +46,25 @@ def results(datasets: dict, model) -> None:
             data, cash=cash
         )
 
+        # guarda la serie según el split
+        if dataset_name.lower() == "train":
+            pv_train = port_series
+        elif dataset_name.lower() == "test":
+            pv_test = port_series
+        elif dataset_name.lower() in ("val", "validation"):
+            pv_val = port_series
+
+        # imprime resultados por split
         show_results(cash, port_series, win_rate, buy, sell, hold, total_trades)
-        metrics(port_series)
+
+    # Si solo quieres la vista contigua test + val:
+    if pv_test is not None and pv_val is not None:
+        plot_test_validation(pv_test, pv_val)
+
+    # (opcional) métricas finales sobre el último split evaluado
+    if pv_val is not None:
+        metrics(pv_val)
+    elif pv_test is not None:
+        metrics(pv_test)
+    elif pv_train is not None:
+        metrics(pv_train)
