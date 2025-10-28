@@ -1,15 +1,29 @@
 from libraries import *
 from indicators import Indicators
 from functions import Params_Indicators
-from dateutil.relativedelta import relativedelta
-
 from normalization import normalize_all_indicators, normalize_price
+
 
 def clean_data(activo: str, intervalo: str = "15y") -> pd.DataFrame:
     """
-    Downloads historical stock data from Yahoo Finance.
-    If the most recent candle lacks a 'Close' (e.g., ongoing trading day),
-    it uses the last available price (from 'Adj Close' or 'Open'/'High'/'Low').
+    Download and sanitize historical OHLCV data from Yahoo Finance.
+
+    The function fetches daily data, flattens multi-index columns if present,
+    ensures the presence of a valid 'Close' column (falling back to 'Adj Close'
+    or the mean of ['Open', 'High', 'Low'] when needed), keeps standard columns,
+    coerces them to numeric, and drops rows with missing OHLC values.
+
+    Parameters
+    ----------
+    activo : str
+        Ticker symbol (e.g., "AAPL").
+    intervalo : str, default="15y"
+        Lookback in the form ``<int><unit>`` where unit ∈ {d, w, m, y}.
+
+    Returns
+    -------
+    pd.DataFrame
+        Cleaned DataFrame with columns ['Date', 'Open', 'High', 'Low', 'Close', 'Volume'].
     """
     n, u = re.match(r"(\d+)([dwmy])", intervalo.lower()).groups()
     delta = {"d": "days", "w": "weeks", "m": "months", "y": "years"}[u]
@@ -20,54 +34,47 @@ def clean_data(activo: str, intervalo: str = "15y") -> pd.DataFrame:
         interval="1d", progress=False
     )
 
-    # --- Flatten multilevel columns if needed ---
     if isinstance(data.columns, pd.MultiIndex):
         data.columns = data.columns.get_level_values(0)
 
     data = data.reset_index()
 
-    # --- If Close column has missing or 0 rows, fill with last valid price ---
     if "Close" not in data.columns or data["Close"].isna().all():
         if "Adj Close" in data.columns:
             data["Close"] = data["Adj Close"]
         else:
-            # fallback: average of open/high/low
             data["Close"] = data[["Open", "High", "Low"]].mean(axis=1)
 
-    # --- Replace NaNs in last row if the market hasn’t closed ---
     if pd.isna(data.loc[data.index[-1], "Close"]):
-        # Use Adj Close if available, else mean of OHLC
         if "Adj Close" in data.columns and not pd.isna(data.loc[data.index[-1], "Adj Close"]):
-            data.loc[data.index[-1], "Close"] = data.loc[data.index[-1], "Adj Close"]
+            data.loc[data.index[-1],
+                     "Close"] = data.loc[data.index[-1], "Adj Close"]
         else:
-            data.loc[data.index[-1], "Close"] = data.loc[data.index[-1], ["Open", "High", "Low"]].mean()
+            data.loc[data.index[-1], "Close"] = data.loc[data.index[-1],
+                                                         ["Open", "High", "Low"]].mean()
 
-    # --- Keep only standard columns ---
     data = data[['Date', 'Open', 'High', 'Low', 'Close', 'Volume']]
-
-    # --- Ensure numeric columns and drop NaNs ---
     data = data.apply(pd.to_numeric, errors='coerce')
     data = data.dropna(subset=["Open", "High", "Low", "Close"])
 
     return data
 
+
 def dataset_split(data: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
-    Splits a DataFrame into training, testing, and validation sets.
+    Split a time-ordered dataset into train, test, and validation partitions.
 
-    Parameters:
+    The split uses fixed proportions: 60% train, 20% test, 20% validation.
+
+    Parameters
+    ----------
     data : pd.DataFrame
-        Complete dataset to split.
-    train : float
-        Fraction of data to use for training.
-    test : float
-        Fraction of data to use for testing.
-    validation : float
-        Fraction of data to use for validation.
+        Full, time-ordered dataset.
 
-    Returns:
-    tuple
-        train_data, test_data, validation_data
+    Returns
+    -------
+    tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]
+        (train, test, validation) partitions, preserving order.
     """
     train_size = int(len(data) * 0.6)
     test_size = int(len(data) * 0.2)
@@ -81,31 +88,36 @@ def dataset_split(data: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.Da
 
 def all_indicators(data: pd.DataFrame) -> pd.DataFrame:
     """
-    Calculates all technical indicators and adds them to the DataFrame.
-    Parameters:
+    Compute and append a comprehensive set of technical indicators.
+
+    Momentum: RSI(7/10/14/20), Awesome Oscillator, Williams %R, ROC, Stochastic (%K/%D)
+    Volatility: ATR, Bollinger Bands, Donchian Channel, Keltner Channel
+    Volume: OBV, CMF, ADI, VPT
+
+    Parameters
+    ----------
     data : pd.DataFrame
-        Input data containing 'Close', 'High', and 'Low' columns.
-    Returns: pd.DataFrame
-        DataFrame with added technical indicators and NaN values removed.
+        Input OHLCV DataFrame containing at least 'Close', 'High', 'Low'.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with added indicator columns and NaN rows removed.
     """
     data = data.copy()
-
     indicators = Indicators(Params_Indicators())
 
-    # --- Momentum Indicators ---
     data = indicators.momentum.rsi(data)
     data = indicators.momentum.aos(data)
     data = indicators.momentum.willr(data)
     data = indicators.momentum.roc(data)
     data = indicators.momentum.stco(data)
 
-    # --- Volatility Indicators ---
     data = indicators.volatility.atr(data)
     data = indicators.volatility.bb(data)
     data = indicators.volatility.dchanel(data)
     data = indicators.volatility.kc(data)
 
-    # --- Volume Indicators ---
     data = indicators.volume.obv(data)
     data = indicators.volume.cmf(data)
     data = indicators.volume.Acc(data)
@@ -114,69 +126,79 @@ def all_indicators(data: pd.DataFrame) -> pd.DataFrame:
     data.dropna(inplace=True)
     return data
 
-def get_signals(data: pd.DataFrame, horizon: int = 5, alpha: float = 0.03) -> pd.DataFrame:
+
+def get_signals(data: pd.DataFrame, horizon: int = 10, alpha: float = 0.01) -> pd.DataFrame:
     """
-    Generate trading signals based on future price movements.
+    Generate ternary trading signals based on future returns.
+
+    Signals are derived from the forward return over a fixed horizon:
+    -  1 (long)  if future_return > alpha
+    -  0 (hold)  otherwise
+    - -1 (short) if future_return < -alpha
 
     Parameters
     ----------
     data : pd.DataFrame
-        Must contain at least a 'Close' column with price data.
-    horizon : int, default=5
-        Number of periods ahead to calculate future returns.
-    alpha : float, default=0.02
-        Threshold (in decimal) for generating buy/sell signals.
+        DataFrame with a 'Close' column.
+    horizon : int, default=10
+        Look-ahead window (number of periods) to compute future price.
+    alpha : float, default=0.01
+        Return threshold used to assign long/short signals.
 
     Returns
     -------
     pd.DataFrame
-        Original DataFrame with additional column:
-        - 'signal': {1 = long, 0 = hold, -1 = short}
+        Copy with 'future_price', 'future_return', and 'signal' columns.
+        The last `horizon` rows are removed to avoid look-ahead bias.
     """
     data = data.copy()
-
     data["future_price"] = data["Close"].shift(-horizon)
-    data["future_return"] = (data["future_price"] - data["Close"]) / data["Close"]
-
-    data["signal"] = np.where(
-        data["future_return"] > alpha, 1,
-        np.where(data["future_return"] < -alpha, -1, 0)
+    data["future_return"] = (data["future_price"] -
+                             data["Close"]) / data["Close"]
+    data["signal"] = np.select(
+        [data["future_return"] > alpha, data["future_return"] < -alpha],
+        [1, -1], default=0
     )
-    data = data.iloc[:-horizon].copy()
-    data.drop(columns=["future_price", "future_return"], inplace=True)
-
-    return data
+    return data.dropna().iloc[:-horizon]
 
 
 def all_normalization_indicators(data: pd.DataFrame) -> pd.DataFrame:
     """
-    Normalizes all technical indicators in the DataFrame.
+    Normalize indicator columns using consistent, scale-aware transformations.
 
-    Parameters:
+    Momentum
+        RSI, Stochastic → scaled to [0, 1]; AO and ROC → standardized (z-score).
+        Williams %R     → shifted to [0, 1].
+    Volatility
+        ATR and bands (Bollinger, Donchian, Keltner) scaled relative to 'Close'.
+        Relative band position features are added when applicable.
+    Volume
+        OBV, ADI, VPT standardized (z-score); CMF scaled from [-1, 1] to [0, 1].
+
+    Parameters
+    ----------
     data : pd.DataFrame
-        Input data containing technical indicators.
+        DataFrame with previously computed technical indicators.
 
-    Returns: pd.DataFrame
-        DataFrame with normalized technical indicators.
+    Returns
+    -------
+    pd.DataFrame
+        Copy with normalized indicator columns.
     """
     data = data.copy()
-
     normalizer = normalize_all_indicators()
 
-    # --- Momentum Indicators ---
     data = normalizer.Momentum().rsi(data)
     data = normalizer.Momentum().aos(data)
     data = normalizer.Momentum().willr(data)
     data = normalizer.Momentum().roc(data)
     data = normalizer.Momentum().stco(data)
 
-    # --- Volatility Indicators ---
     data = normalizer.Volatility().atr(data)
     data = normalizer.Volatility().bb(data)
     data = normalizer.Volatility().dchanel(data)
     data = normalizer.Volatility().kc(data)
 
-    # --- Volume Indicators ---
     data = normalizer.Volume().obv(data)
     data = normalizer.Volume().cmf(data)
     data = normalizer.Volume().Acc(data)
@@ -187,59 +209,69 @@ def all_normalization_indicators(data: pd.DataFrame) -> pd.DataFrame:
 
 def all_normalization_price(data: pd.DataFrame) -> pd.DataFrame:
     """
-    Normalizes the 'Close' price in the DataFrame.
+    Add a z-scored version of 'Close' as 'Close_Z'.
 
-    Parameters:
+    Parameters
+    ----------
     data : pd.DataFrame
-        Input data containing 'Close' price.
+        Input DataFrame containing a 'Close' column.
 
-    Returns: pd.DataFrame
-        DataFrame with normalized 'Close' price.
+    Returns
+    -------
+    pd.DataFrame
+        Copy with a new 'Close_Z' column (original 'Close' is preserved).
     """
     data = data.copy()
-
     data = normalize_price.Price().close(data)
     return data
 
 
-
 def target(data: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
     """
-    Separates features and target variable from the DataFrame.
+    Split features and target from a labeled dataset.
 
-    Parameters:
+    Parameters
+    ----------
     data : pd.DataFrame
-        Input data containing features and 'signal' target column.
+        Labeled DataFrame containing a 'signal' column.
 
-    Returns: tuple
-        X : pd.DataFrame
-            Features DataFrame (all columns except 'signal').
-        y : pd.Series
-            Target Series ('signal' column).
+    Returns
+    -------
+    tuple[pd.DataFrame, pd.Series]
+        X: Feature matrix (all columns except 'signal').
+        y: Target vector (the 'signal' column).
     """
     data = data.copy()
-
     X = data.drop(columns=['signal'])
     y = data['signal']
-
     return X, y
 
 
-def process_dataset(data: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def process_dataset(data: pd.DataFrame, alpha: float = 0.01) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
-    Returns: tuple
-        data : pd.DataFrame -> base data con señales
-        data_indicators : pd.DataFrame -> indicadores normalizados (con 'signal')
-        data_price : pd.DataFrame -> precio normalizado (sin leakage)
+    Full preprocessing pipeline for a single split.
+
+    Steps
+    -----
+    1) Compute indicators
+    2) Create forward-looking trading signals
+    3) Normalize indicators
+    4) Add z-scored price
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Raw OHLCV DataFrame.
+    alpha : float, default=0.01
+        Signal threshold used by `get_signals`.
+
+    Returns
+    -------
+    tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]
+        (data_with_signals, normalized_indicators, price_with_close_z)
     """
     data = all_indicators(data)
-    data = get_signals(data)
-
-    data_indicators = all_normalization_indicators(data).copy()
-    data_price = all_normalization_price(data).copy()
-
-    data_indicators.dropna(inplace=True)
-    data_price.dropna(inplace=True)
-
-    return data, data_indicators, data_price
-
+    data = get_signals(data, alpha=alpha)
+    data_ind = all_normalization_indicators(data)
+    data_price = all_normalization_price(data)
+    return data, data_ind, data_price
