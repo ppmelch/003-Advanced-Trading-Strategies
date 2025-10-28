@@ -1,0 +1,10 @@
+artifact_location: file:///C:/Users/ppmel/Documentos/ITESO%207mo%20Semestre/003-Advanced-Trading-Strategies/mlruns/599628902080518890/models/m-aab7dab8c2a74399a3a89ead8aa1eac6/artifacts
+creation_timestamp: 1761679972975
+experiment_id: '599628902080518890'
+last_updated_timestamp: 1761679981299
+model_id: m-aab7dab8c2a74399a3a89ead8aa1eac6
+model_type: null
+name: MLP_Model_artifact
+source_run_id: 1cc6c98e2e35474080fc7d6539e90b73
+status: 2
+status_message: null

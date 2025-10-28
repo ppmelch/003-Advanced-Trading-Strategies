@@ -28,7 +28,8 @@ def ks_drift_test(reference_df: pd.DataFrame, new_df: pd.DataFrame, alpha: float
     results = []
     for feature in reference_df.columns:
         if pd.api.types.is_numeric_dtype(reference_df[feature]):
-            p_value = ks_2samp(reference_df[feature].dropna(), new_df[feature].dropna()).pvalue
+            p_value = ks_2samp(
+                reference_df[feature].dropna(), new_df[feature].dropna()).pvalue
             drift_detected = p_value < alpha
             results.append({
                 "feature": feature,
@@ -59,7 +60,8 @@ def summarize_drift(reference_df: pd.DataFrame, new_df: pd.DataFrame, alpha: flo
     """
     drift_summary = {}
     for feature in reference_df.columns:
-        result = ks_drift_test(reference_df[[feature]], new_df[[feature]], alpha)
+        result = ks_drift_test(
+            reference_df[[feature]], new_df[[feature]], alpha)
         drift_summary[feature] = result
     return drift_summary
 
@@ -83,6 +85,7 @@ def compute_pvalues(reference_df: pd.DataFrame, new_df: pd.DataFrame) -> dict:
     """
     p_values = {}
     for feature in reference_df.columns:
-        _, p_value = ks_2samp(reference_df[feature].dropna(), new_df[feature].dropna())
+        _, p_value = ks_2samp(
+            reference_df[feature].dropna(), new_df[feature].dropna())
         p_values[feature] = p_value
     return p_values

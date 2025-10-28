@@ -1,0 +1,22 @@
+artifact_path: file:///C:/Users/ppmel/Documentos/ITESO%207mo%20Semestre/003-Advanced-Trading-Strategies/mlruns/599628902080518890/models/m-f8ce1722093740f5b1e1b0b81dbacb15/artifacts
+flavors:
+  python_function:
+    data: data
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.tensorflow
+    python_version: 3.13.5
+  tensorflow:
+    code: null
+    data: data
+    keras_version: 2.20.0
+    model_type: keras
+    save_format: tf
+mlflow_version: 3.5.0
+model_id: m-f8ce1722093740f5b1e1b0b81dbacb15
+model_size_bytes: 102284
+model_uuid: m-f8ce1722093740f5b1e1b0b81dbacb15
+prompts: null
+run_id: bd9388f61e274bd0adfb945a1ef33e4f
+utc_time_created: '2025-10-28 18:43:22.354230'

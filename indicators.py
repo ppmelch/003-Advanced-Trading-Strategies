@@ -3,6 +3,25 @@ from functions import Params_Indicators
 
 
 class Indicators:
+    """
+    Compute technical indicators for momentum, volatility, and volume analysis.
+
+    This class groups several types of technical indicators commonly used in
+    financial time series analysis. It uses parameter values from a
+    `Params_Indicators` dataclass to control window sizes and other settings.
+
+    Attributes
+    ----------
+    params : Params_Indicators
+        Configuration parameters for all indicator calculations.
+    momentum : Indicators.Momentum
+        Subclass handling momentum-related indicators.
+    volatility : Indicators.Volatility
+        Subclass handling volatility-related indicators.
+    volume : Indicators.Volume
+        Subclass handling volume-related indicators.
+    """
+
     def __init__(self, params: Params_Indicators):
         self.params = params
         self.momentum = self.Momentum(params)
@@ -10,22 +29,52 @@ class Indicators:
         self.volume = self.Volume(params)
 
     class Momentum:
+        """
+        Compute momentum-based technical indicators such as RSI, ROC, and Stochastic Oscillator.
+        """
+
         def __init__(self, params: Params_Indicators):
             self.params = params
 
         def rsi(self, data: pd.DataFrame) -> pd.DataFrame:
+            """
+            Compute multiple RSI (Relative Strength Index) values.
+
+            Parameters
+            ----------
+            data : pd.DataFrame
+                Input DataFrame containing 'Close' price.
+
+            Returns
+            -------
+            pd.DataFrame
+                Copy of input DataFrame with added RSI columns.
+            """
             data = data.copy()
-            data[f'RSI_7'] = RSIIndicator(
+            data['RSI_7'] = RSIIndicator(
                 data['Close'], window=self.params.rsi_7_window).rsi()
-            data[f'RSI_10'] = RSIIndicator(
+            data['RSI_10'] = RSIIndicator(
                 data['Close'], window=self.params.rsi_10_window).rsi()
-            data[f'RSI_14'] = RSIIndicator(
+            data['RSI_14'] = RSIIndicator(
                 data['Close'], window=self.params.rsi_14_window).rsi()
-            data[f'RSI_20'] = RSIIndicator(
+            data['RSI_20'] = RSIIndicator(
                 data['Close'], window=self.params.rsi_20_window).rsi()
             return data
 
         def aos(self, data: pd.DataFrame) -> pd.DataFrame:
+            """
+            Compute the Awesome Oscillator (AO).
+
+            Parameters
+            ----------
+            data : pd.DataFrame
+                DataFrame with 'High' and 'Low' columns.
+
+            Returns
+            -------
+            pd.DataFrame
+                Copy with 'Awesome_Oscillator' column added.
+            """
             data = data.copy()
             ao = AwesomeOscillatorIndicator(
                 high=data['High'], low=data['Low'],
@@ -37,6 +86,19 @@ class Indicators:
             return data
 
         def willr(self, data: pd.DataFrame) -> pd.DataFrame:
+            """
+            Compute the Williams %R indicator.
+
+            Parameters
+            ----------
+            data : pd.DataFrame
+                DataFrame with 'High', 'Low', and 'Close' columns.
+
+            Returns
+            -------
+            pd.DataFrame
+                Copy with 'Williams_%R' column added.
+            """
             data = data.copy()
             wr = WilliamsRIndicator(
                 high=data['High'], low=data['Low'], close=data['Close'],
@@ -46,6 +108,19 @@ class Indicators:
             return data
 
         def roc(self, data: pd.DataFrame) -> pd.DataFrame:
+            """
+            Compute the Rate of Change (ROC) indicator.
+
+            Parameters
+            ----------
+            data : pd.DataFrame
+                DataFrame with 'Close' column.
+
+            Returns
+            -------
+            pd.DataFrame
+                Copy with 'ROC' column added.
+            """
             data = data.copy()
             roc = ROCIndicator(
                 close=data['Close'], window=self.params.roc_window, fillna=False)
@@ -53,6 +128,19 @@ class Indicators:
             return data
 
         def stco(self, data: pd.DataFrame) -> pd.DataFrame:
+            """
+            Compute the Stochastic Oscillator (%K and %D).
+
+            Parameters
+            ----------
+            data : pd.DataFrame
+                DataFrame with 'High', 'Low', and 'Close' columns.
+
+            Returns
+            -------
+            pd.DataFrame
+                Copy with 'Stoch_K' and 'Stoch_D' columns added.
+            """
             data = data.copy()
             stoch = StochasticOscillator(
                 high=data['High'], low=data['Low'], close=data['Close'],
@@ -65,10 +153,28 @@ class Indicators:
             return data
 
     class Volatility:
+        """
+        Compute volatility-based indicators such as ATR, Bollinger Bands, 
+        Donchian Channels, and Keltner Channels.
+        """
+
         def __init__(self, params: Params_Indicators):
             self.params = params
 
         def atr(self, data: pd.DataFrame) -> pd.DataFrame:
+            """
+            Compute the Average True Range (ATR).
+
+            Parameters
+            ----------
+            data : pd.DataFrame
+                DataFrame with 'High', 'Low', and 'Close' columns.
+
+            Returns
+            -------
+            pd.DataFrame
+                Copy with 'ATR' column added.
+            """
             data = data.copy()
             atr = AverageTrueRange(
                 high=data['High'], low=data['Low'], close=data['Close'],
@@ -78,6 +184,19 @@ class Indicators:
             return data
 
         def bb(self, data: pd.DataFrame) -> pd.DataFrame:
+            """
+            Compute Bollinger Bands (Middle, High, and Low).
+
+            Parameters
+            ----------
+            data : pd.DataFrame
+                DataFrame with 'Close' column.
+
+            Returns
+            -------
+            pd.DataFrame
+                Copy with Bollinger Bands columns added.
+            """
             data = data.copy()
             bb = BollingerBands(
                 close=data['Close'],
@@ -91,6 +210,19 @@ class Indicators:
             return data
 
         def dchanel(self, data: pd.DataFrame) -> pd.DataFrame:
+            """
+            Compute Donchian Channel (High, Low, and Middle bands).
+
+            Parameters
+            ----------
+            data : pd.DataFrame
+                DataFrame with 'High', 'Low', and 'Close' columns.
+
+            Returns
+            -------
+            pd.DataFrame
+                Copy with Donchian Channel columns added.
+            """
             data = data.copy()
             dc = DonchianChannel(
                 high=data['High'], low=data['Low'], close=data['Close'],
@@ -102,6 +234,19 @@ class Indicators:
             return data
 
         def kc(self, data: pd.DataFrame) -> pd.DataFrame:
+            """
+            Compute Keltner Channel (High and Low bands).
+
+            Parameters
+            ----------
+            data : pd.DataFrame
+                DataFrame with 'High', 'Low', and 'Close' columns.
+
+            Returns
+            -------
+            pd.DataFrame
+                Copy with Keltner Channel columns added.
+            """
             data = data.copy()
             kc = KeltnerChannel(
                 high=data['High'], low=data['Low'], close=data['Close'],
@@ -114,44 +259,95 @@ class Indicators:
             return data
 
     class Volume:
+        """
+        Compute volume-based technical indicators such as OBV, CMF, ADI, and VPT.
+        """
+
         def __init__(self, params: Params_Indicators):
             self.params = params
 
         def obv(self, data: pd.DataFrame) -> pd.DataFrame:
+            """
+            Compute On-Balance Volume (OBV).
+
+            Parameters
+            ----------
+            data : pd.DataFrame
+                DataFrame with 'Close' and 'Volume' columns.
+
+            Returns
+            -------
+            pd.DataFrame
+                Copy with 'OBV' column added.
+            """
             data = data.copy()
             obv = OnBalanceVolumeIndicator(
-                close=data['Close'], volume=data['Volume'],
-                fillna=False
+                close=data['Close'], volume=data['Volume'], fillna=False
             )
             data['OBV'] = obv.on_balance_volume()
             return data
 
         def cmf(self, data: pd.DataFrame) -> pd.DataFrame:
+            """
+            Compute Chaikin Money Flow (CMF).
+
+            Parameters
+            ----------
+            data : pd.DataFrame
+                DataFrame with 'High', 'Low', 'Close', and 'Volume' columns.
+
+            Returns
+            -------
+            pd.DataFrame
+                Copy with 'CMF' column added.
+            """
             data = data.copy()
             cmf = ChaikinMoneyFlowIndicator(
                 high=data['High'], low=data['Low'], close=data['Close'],
-                volume=data['Volume'], window=self.params.cmf_window,
-                fillna=False
+                volume=data['Volume'], window=self.params.cmf_window, fillna=False
             )
             data['CMF'] = cmf.chaikin_money_flow()
             return data
 
         def Acc(self, data: pd.DataFrame) -> pd.DataFrame:
+            """
+            Compute Accumulation/Distribution Index (ADI).
+
+            Parameters
+            ----------
+            data : pd.DataFrame
+                DataFrame with 'High', 'Low', 'Close', and 'Volume' columns.
+
+            Returns
+            -------
+            pd.DataFrame
+                Copy with 'ADI' column added.
+            """
             data = data.copy()
             adi = AccDistIndexIndicator(
-                high=data['High'], low=data['Low'],
-                close=data['Close'], volume=data['Volume'],
+                high=data['High'], low=data['Low'], close=data['Close'], volume=data['Volume'],
                 fillna=False
             )
             data['ADI'] = adi.acc_dist_index()
             return data
 
         def vpt(self, data: pd.DataFrame) -> pd.DataFrame:
+            """
+            Compute Volume Price Trend (VPT).
+
+            Parameters
+            ----------
+            data : pd.DataFrame
+                DataFrame with 'Close' and 'Volume' columns.
+
+            Returns
+            -------
+            pd.DataFrame
+                Copy with 'VPT' column added.
+            """
             data = data.copy()
             vpt = VolumePriceTrendIndicator(
-                close=data['Close'], volume=data['Volume'],
-                fillna=False
+                close=data['Close'], volume=data['Volume'], fillna=False
             )
             data['VPT'] = vpt.volume_price_trend()
             return data
-

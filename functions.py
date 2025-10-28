@@ -90,7 +90,7 @@ class MLP_Params:
     loss: str = "sparse_categorical_crossentropy" 
     metrics: tuple = ("accuracy",)   
     batch_size: int = 32
-    epochs: int = 10
+    epochs: int = 100
     verbose : int = 2
     Average : str = 'weighted'
 
@@ -106,8 +106,8 @@ class CNN_Params:
     optimizer: str = 'adam'
     output_units: int = 3            
     output_activation: str = "softmax" 
-    epochs: int = 10
-    batch_size: int = 252
+    epochs: int = 100
+    batch_size: int = 32
     metrics: tuple = ("accuracy",)  
     verbose : int = 2
     Average : str = 'weighted'
