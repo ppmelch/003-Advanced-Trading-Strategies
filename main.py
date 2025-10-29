@@ -1,8 +1,7 @@
-from backtesting import backtest
 from libraries import *
 from prints import backtest_model
 from models import  model_name_version
-from data_processing import all_indicators, all_normalization_indicators, all_normalization_price, dataset_split, clean_data, process_dataset, target
+from data_processing import all_indicators, all_normalization_price, dataset_split, clean_data, process_dataset, target
 
 def main():
     """
