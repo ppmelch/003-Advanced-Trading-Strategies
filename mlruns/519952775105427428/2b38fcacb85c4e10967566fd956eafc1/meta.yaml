@@ -1,0 +1,14 @@
+artifact_uri: file:///C:/Users/ppmel/Documentos/ITESO%207mo%20Semestre/003-Advanced-Trading-Strategies/mlruns/519952775105427428/2b38fcacb85c4e10967566fd956eafc1/artifacts
+end_time: 1761689155224
+entry_point_name: ''
+experiment_id: '519952775105427428'
+lifecycle_stage: active
+run_id: 2b38fcacb85c4e10967566fd956eafc1
+run_name: CNN_layers2_filters64
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1761689136474
+status: 3
+tags: []
+user_id: ppmel

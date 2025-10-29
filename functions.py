@@ -82,14 +82,14 @@ class Params_Indicators:
 class MLP_Params:
     """Hyperparameters for a Keras-based MLP model."""
     dense_layers: int = 2           
-    dense_units: int = 64            
+    dense_units: int = 128           
     activation: str = "relu"        
     optimizer: str = "adam"          
     output_units: int = 3            
     output_activation: str = "softmax" 
     loss: str = "sparse_categorical_crossentropy" 
     metrics: tuple = ("accuracy",)   
-    batch_size: int = 32
+    batch_size: int = 252
     epochs: int = 100
     verbose : int = 2
     Average : str = 'weighted'
@@ -99,15 +99,15 @@ class CNN_Params:
     """Hyperparameters for a Keras-based CNN model."""
     lookback: int = 20
     conv_layers: int = 2
-    filters: int = 32
+    filters: int = 64
     kernel_size: int = 3
     dense_units: int = 64
     activation: str = 'relu'
     optimizer: str = 'adam'
     output_units: int = 3            
     output_activation: str = "softmax" 
-    epochs: int = 100
-    batch_size: int = 32
+    epochs: int = 60
+    batch_size: int = 252
     metrics: tuple = ("accuracy",)  
     verbose : int = 2
     Average : str = 'weighted'

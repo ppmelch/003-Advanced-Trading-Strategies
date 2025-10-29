@@ -1,8 +1,8 @@
-
+from backtesting import backtest
 from libraries import *
 from prints import backtest_model
 from models import  model_name_version
-from data_processing import all_indicators, all_normalization_indicators, dataset_split, clean_data
+from data_processing import all_indicators, all_normalization_indicators, all_normalization_price, dataset_split, clean_data, process_dataset, target
 
 def main():
     """
@@ -32,29 +32,34 @@ def main():
     data = clean_data("AAPL", "15y")
     train, test, val = dataset_split(data)
 
-    test_ind = all_normalization_indicators(all_indicators(test))
-    val_ind = all_normalization_indicators(all_indicators(val))
+    train_data, train_ind, train_price = process_dataset(train, alpha=0.01)
+    x_train_df, _ = target(train_price)  
 
     feature_cols = joblib.load("feature_cols.pkl")
     print(f"✅ Loaded training features: {len(feature_cols)} columns\n")
 
-    test_ind = test_ind.reindex(columns=feature_cols).fillna(0)
-    val_ind = val_ind.reindex(columns=feature_cols).fillna(0)
+    test_price = all_normalization_price(all_indicators(test))
+    val_price  = all_normalization_price(all_indicators(val))
 
-    x_test = np.asarray(test_ind, dtype="float32")
-    x_val = np.asarray(val_ind, dtype="float32")
+    x_train_df = x_train_df.reindex(columns=feature_cols).fillna(0)
+    x_test_df  = test_price.reindex(columns=feature_cols).fillna(0)
+    x_val_df   = val_price.reindex(columns=feature_cols).fillna(0)
+
+    x_train = np.asarray(x_train_df, dtype="float32")
+    x_test  = np.asarray(x_test_df, dtype="float32")
+    x_val   = np.asarray(x_val_df, dtype="float32")
 
     datasets = {
-        "test": (test.copy().iloc[-len(x_test):], x_test),
-        "val": (val.copy().iloc[-len(x_val):], x_val),
+        "train": (train_data.copy().iloc[-len(x_train):], x_train),
+        "test":  (test.copy().iloc[-len(x_test):],       x_test),
+        "val":   (val.copy().iloc[-len(x_val):],         x_val),
     }
 
-    model_MLP = model_name_version("MLP_Model_003", "10")
-    model_CNN = model_name_version("CNN_Model_003", "10")
+    model_MLP = model_name_version("MLP_Model_003", "7")
+    model_CNN = model_name_version("CNN_Model_003", "7")
 
     backtest_model(datasets, model_MLP, "MLP")
     backtest_model(datasets, model_CNN, "CNN")
-
 
 if __name__ == "__main__":
     main()

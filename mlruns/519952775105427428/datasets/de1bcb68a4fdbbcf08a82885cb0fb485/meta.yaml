@@ -1,0 +1,11 @@
+digest: 6e4d02f8
+name: dataset
+profile: '{"features_shape": [2210, 31], "features_size": 68510, "features_nbytes":
+  274040, "targets_shape": [2210], "targets_size": 2210, "targets_nbytes": 17680}'
+schema: '{"mlflow_tensorspec": {"features": "[{\"type\": \"tensor\", \"tensor-spec\":
+  {\"dtype\": \"float32\", \"shape\": [-1, 31]}}]", "targets": "[{\"type\": \"tensor\",
+  \"tensor-spec\": {\"dtype\": \"int64\", \"shape\": [-1]}}]"}}'
+source: '{"tags": {"mlflow.user": "ppmel", "mlflow.source.name": "c:/Users/ppmel/Documentos/ITESO
+  7mo Semestre/003-Advanced-Trading-Strategies/run_models.py", "mlflow.source.type":
+  "LOCAL", "mlflow.source.git.commit": "bb3b5fdeb2dd9a3fa02f0ed7894d994fc78f88fc"}}'
+source_type: code

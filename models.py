@@ -1,11 +1,26 @@
-def register_models(models: dict, experiment_name="Advanced-Trading-Strategies"):
+from sklearn.utils import compute_class_weight
+from libraries import *
+from functions import CNN_Params, MLP_Params
+
+
+def register_models(models: dict, experiment_name: str = "Advanced-Trading-Strategies") -> None:
     """
-    Registers trained models in MLflow Model Registry.
-    Args:
-        models (dict): A dictionary with model names as keys and trained model objects as values.
-        experiment_name (str): The name of the MLflow experiment to use.
-    Returns:
-        None
+    Register trained models into the MLflow Model Registry.
+
+    Each item in `models` is logged under a separate MLflow run, and then
+    registered with the name ``{model_key}_003`` (fixed suffix).
+
+    Parameters
+    ----------
+    models : dict
+        Mapping from model key (str) to a trained model instance.
+    experiment_name : str, default="Advanced-Trading-Strategies"
+        MLflow experiment name where the runs will be recorded.
+
+    Returns
+    -------
+    None
+        Side effects: logs and registers models in MLflow.
     """
     mlflow.set_experiment(experiment_name)
     for name, model in models.items():
@@ -20,11 +35,19 @@ def register_models(models: dict, experiment_name="Advanced-Trading-Strategies")
 
 def _load_latest(model_name: str):
     """
-    Load the latest version of a registered model from MLflow.
-    Args:
-        model_name (str): The name of the registered model.
-    Returns:
-        The loaded model.
+    Load the latest version of a model from MLflow Model Registry.
+
+    Attempts TensorFlow loader first; falls back to Keras loader on failure.
+
+    Parameters
+    ----------
+    model_name : str
+        Registered MLflow model name (e.g., "MLP_Model_003").
+
+    Returns
+    -------
+    Any
+        Loaded model artifact.
     """
     client = MlflowClient()
     versions = client.search_model_versions(f"name='{model_name}'")
@@ -39,12 +62,21 @@ def _load_latest(model_name: str):
 
 def model_name_version(model_name: str, model_version: str):
     """
-    Load a specific version of a registered model from MLflow.
-    Args:
-        model_name (str): The name of the registered model.
-        model_version (str): The version number of the model to load.
-    Returns:
-        The loaded model.
+    Load a specific version of a model from MLflow Model Registry.
+
+    Attempts TensorFlow loader first; falls back to Keras loader on failure.
+
+    Parameters
+    ----------
+    model_name : str
+        Registered model name (e.g., "CNN_Model_003").
+    model_version : str
+        Version number as a string (e.g., "10").
+
+    Returns
+    -------
+    Any
+        Loaded model artifact.
     """
     uri = f"models:/{model_name}/{model_version}"
     print(f"🔍 Cargando modelo desde MLflow: {uri}")
@@ -56,58 +88,74 @@ def model_name_version(model_name: str, model_version: str):
 
 class Model:
     """
-    Define MLP and CNN model architectures used by the training utilities.
+    Define MLP and 1D-CNN architectures for classification.
 
-    Contains static helper methods that build and compile Keras models:
-    - model_MLP(input_shape, params: MLP_Params) -> tf.keras.Model
-    - model_CNN(input_shape: tuple, params: CNN_Params) -> tf.keras.Model
+    Methods
+    -------
+    model_MLP(input_shape, params)
+        Build a dense MLP classifier.
+    model_CNN(input_shape, params)
+        Build a temporal 1D-CNN classifier.
     """
 
     @staticmethod
-    def model_MLP(input_shape, params: MLP_Params):
+    def model_MLP(input_shape: int, params: MLP_Params) -> tf.keras.Model:
         """
-        Builds and compiles a Keras MLP model based on provided hyperparameters.
-        Args:
-            input_shape (int): The number of input features.
-            params (MLP_Params): Hyperparameters for the MLP model.
-        Returns:
-            tf.keras.Model: The compiled MLP model.
-        """
+        Build and compile a Keras MLP model.
 
-        model = tf.keras.models.Sequential([
-            tf.keras.layers.Input(shape=(input_shape,)),
-            *[
-                tf.keras.layers.Dense(params.dense_units,
-                                      activation=params.activation)
-                for _ in range(params.dense_layers)
-            ],
-            tf.keras.layers.Dense(params.output_units,
-                                  activation=params.output_activation)
-        ])
+        Parameters
+        ----------
+        input_shape : int
+            Number of input features.
+        params : MLP_Params
+            Dataclass with hyperparameters (layers, units, activations, etc.).
+
+        Returns
+        -------
+        tf.keras.Model
+            Compiled MLP model.
+        """
+        model = tf.keras.models.Sequential()
+        model.add(tf.keras.layers.Input(shape=(input_shape,)))
+        for _ in range(params.dense_layers):
+            model.add(tf.keras.layers.Dense(
+                params.dense_units, activation=params.activation))
+        model.add(tf.keras.layers.Dense(params.output_units,
+                  activation=params.output_activation))
         model.compile(
-            optimizer=params.optimizer,
+            optimizer=tf.keras.optimizers.get(params.optimizer),
             loss=params.loss,
-            metrics=["accuracy"]
+            metrics=list(params.metrics)
         )
         return model
 
     @staticmethod
-    def model_CNN(input_shape: tuple, params: CNN_Params):
+    def model_CNN(input_shape: tuple, params: CNN_Params) -> tf.keras.Model:
         """
-        Builds and compiles a Keras CNN model based on provided hyperparameters.
-        Args:
-            input_shape (tuple): The shape of the input data (timesteps, features).
-            params (CNN_Params): Hyperparameters for the CNN model.
-        Returns:
-            tf.keras.Model: The compiled CNN model.
-        """
+        Build and compile a Keras 1D-CNN model.
 
+        Parameters
+        ----------
+        input_shape : tuple
+            Input shape for Conv1D, typically ``(timesteps, n_features)``.
+        params : CNN_Params
+            Dataclass with convolutional and dense hyperparameters.
+
+        Returns
+        -------
+        tf.keras.Model
+            Compiled 1D-CNN model.
+        """
         model = tf.keras.models.Sequential()
         model.add(tf.keras.layers.Input(shape=input_shape))
         filters = params.filters
         for _ in range(params.conv_layers):
-            model.add(tf.keras.layers.Conv1D(filters, params.kernel_size,
-                      activation=params.activation, padding="same"))
+            model.add(tf.keras.layers.Conv1D(
+                filters=filters,
+                kernel_size=params.kernel_size,
+                activation=params.activation,
+                padding='same'
+            ))
             model.add(tf.keras.layers.MaxPooling1D(pool_size=2))
             filters *= 2
         model.add(tf.keras.layers.Flatten())
@@ -116,184 +164,324 @@ class Model:
         model.add(tf.keras.layers.Dense(params.output_units,
                   activation=params.output_activation))
         model.compile(
-            optimizer=params.optimizer,
+            optimizer=tf.keras.optimizers.get(params.optimizer),
             loss=params.loss,
-            metrics=["accuracy"]
+            metrics=list(params.metrics)
         )
         return model
 
 
 class Training_Model:
-    """T
+    """
     Training utilities for MLP and CNN models with MLflow logging.
-    Contains static methods to train MLP and CNN models while logging metrics to MLflow:
-    - training_MLP(x_train, y_train, x_test=None, y_test=None,
-        x_val=None, y_val=None, params_list=None) -> tf.keras.Model
-    - training_CNN(x_train, y_train, x_test=None, y_test=None,
-        x_val=None, y_val=None, params_list=None) -> tf.keras.Model
+
+    Methods
+    -------
+    training_MLP(...)
+        Train an MLP with class-weighting and log metrics to MLflow.
+    training_CNN(...)
+        Train a 1D-CNN with class-weighting and log metrics to MLflow.
     """
 
     @staticmethod
-    def _log_final_metrics(hist, y_true_train, y_pred_train, y_true_val=None, y_pred_val=None):
+    def training_MLP(
+        x_train,
+        y_train,
+        x_test=None,
+        y_test=None,
+        x_val=None,
+        y_val=None,
+        params_list=None,
+        experiment_name: str = "Advanced-Trading-Strategies"
+    ):
         """
-        Record final training and validation metrics to MLflow.
-        Parameters:
-            hist : tf.keras.callbacks.History
-            Training history object from model.fit().
-            y_true_train : np.ndarray
-            True labels for training data.
-            y_pred_train : np.ndarray
-            Predicted labels for training data.
-            y_true_val : np.ndarray, optional
-            True labels for validation data.
-            y_pred_val : np.ndarray, optional
-            Predicted labels for validation data.
-        Returns:
-            None
-            """
-        metrics = {
-            "train_accuracy": hist.history["accuracy"][-1],
-            "train_loss": hist.history["loss"][-1],
-            "val_accuracy": hist.history.get("val_accuracy", [0])[-1],
-            "val_loss": hist.history.get("val_loss", [0])[-1],
-            "train_f1": f1_score(y_true_train, y_pred_train, average="weighted"),
-        }
+        Train an MLP and log metrics and artifacts to MLflow.
 
-        if y_true_val is not None and y_pred_val is not None:
-            metrics["val_f1"] = f1_score(
-                y_true_val, y_pred_val, average="weighted")
+        The labels are expected in {-1, 0, 1}. Internally, labels are shifted
+        to {0, 1, 2} to match SparseCategorical* losses/metrics. Class weights
+        are computed using `sklearn.utils.class_weight.compute_class_weight`.
 
-        mlflow.log_metrics(metrics)
-        print(f"📊 Métricas finales: {metrics}")
+        Parameters
+        ----------
+        x_train : np.ndarray
+            Training features of shape (N, F).
+        y_train : np.ndarray | pd.Series
+            Training labels in {-1, 0, 1}.
+        x_test : np.ndarray, optional
+            Test features for final evaluation.
+        y_test : np.ndarray | pd.Series, optional
+            Test labels in {-1, 0, 1}.
+        x_val : np.ndarray, optional
+            Validation features for early evaluation.
+        y_val : np.ndarray | pd.Series, optional
+            Validation labels in {-1, 0, 1}.
+        params_list : list[MLP_Params] | MLP_Params | None
+            One or multiple configurations to try. If a single `MLP_Params`
+            is provided, it is wrapped into a list.
+        experiment_name : str, default="Advanced-Trading-Strategies"
+            MLflow experiment name.
 
-    @staticmethod
-    def training_MLP(x_train, y_train, x_test=None, y_test=None, x_val=None, y_val=None, params_list=None):
+        Returns
+        -------
+        tf.keras.Model
+            The last trained MLP model.
         """
-        Trains an MLP model with given training data and hyperparameters, logging metrics to MLflow.
-        Parameters:
-            x_train : np.ndarray
-                Training feature data.
-            y_train : np.ndarray
-                Training labels.
-            x_test : np.ndarray, optional
-                Test feature data.
-            y_test : np.ndarray, optional
-                Test labels.
-            x_val : np.ndarray, optional
-                Validation feature data.
-            y_val : np.ndarray, optional
-                Validation labels.
-            params_list : list of MLP_Params
-                List of hyperparameter configurations to try.
-        Returns:
-            tf.keras.Model
-                The trained MLP model.
-        """
+        print("\n🚀 Entrenando modelo MLP...")
+        mlflow.set_experiment(experiment_name)
+        if not isinstance(params_list, list):
+            params_list = [params_list]
 
-        print("\n--- Entrenando MLP ---\n")
-        mlflow.tensorflow.autolog(log_models=False)
-
-        if y_train is not None:
-            y_train = y_train + 1
-
-        input_shape = x_train.shape[1]
-        mlflow.set_experiment("Advanced-Trading-Strategies")
-
-        for p in params_list:
-            run_name = f"MLP_layers{p.dense_layers}_units{p.dense_units}"
+        for params in params_list:
+            run_name = f"MLP_layers{params.dense_layers}_units{params.dense_units}"
             with mlflow.start_run(run_name=run_name):
-                model = Model.model_MLP(input_shape, p)
+                mlflow.tensorflow.autolog(log_models=False)
 
-                # 🔥 Usa 20% del train para validación
-                hist = model.fit(
-                    x_train, y_train,
-                    validation_split=0.2,
-                    batch_size=p.batch_size,
-                    epochs=p.epochs,
-                    verbose=0
-                )
+                y_train_ext = np.array(y_train)
+                y_train_int = y_train_ext + \
+                    1 if np.min(y_train_ext) < 0 else y_train_ext
 
-                # Predicciones para métricas F1
-                y_pred_train = model.predict(x_train, verbose=0).argmax(axis=1)
-                y_true_train = y_train
+                classes_ext = np.array([-1, 0, 1])
+                cw_vals = compute_class_weight(
+                    class_weight="balanced", classes=classes_ext, y=y_train_ext)
+                class_weight = {0: float(cw_vals[0]), 1: float(
+                    cw_vals[1]), 2: float(cw_vals[2])}
 
-                # Subconjunto de validación (de validation_split)
-                split_idx = int(len(x_train) * 0.8)
-                x_val_ = x_train[split_idx:]
-                y_val_ = y_train[split_idx:]
-                y_pred_val = model.predict(x_val_, verbose=0).argmax(axis=1)
+                model = Model.model_MLP(
+                    input_shape=x_train.shape[1], params=params)
 
-                Training_Model._log_final_metrics(
-                    hist,
-                    y_true_train=y_true_train,
-                    y_pred_train=y_pred_train,
-                    y_true_val=y_val_,
-                    y_pred_val=y_pred_val,
-                )
+                if x_val is not None and y_val is not None:
+                    y_val_ext = np.array(y_val)
+                    y_val_int = y_val_ext + \
+                        1 if np.min(y_val_ext) < 0 else y_val_ext
+
+                    hist = model.fit(
+                        x_train, y_train_int,
+                        batch_size=params.batch_size,
+                        epochs=params.epochs,
+                        verbose=params.verbose,
+                        validation_data=(x_val, y_val_int),
+                        class_weight=class_weight
+                    )
+
+                    y_pred_train_int = model.predict(
+                        x_train, verbose=0).argmax(axis=1)
+                    y_pred_val_int = model.predict(
+                        x_val, verbose=0).argmax(axis=1)
+                    y_pred_train_ext = y_pred_train_int - 1
+                    y_pred_val_ext = y_pred_val_int - 1
+
+                    metrics_dict = {
+                        "train_accuracy": float(hist.history["accuracy"][-1]),
+                        "train_loss": float(hist.history["loss"][-1]),
+                        "val_accuracy": float(hist.history.get("val_accuracy", [0])[-1]),
+                        "val_loss": float(hist.history.get("val_loss", [0])[-1]),
+                        "train_f1": float(f1_score(y_train_ext, y_pred_train_ext, average="weighted")),
+                        "val_f1": float(f1_score(y_val_ext, y_pred_val_ext, average="weighted")),
+                    }
+                    mlflow.log_metrics(metrics_dict)
+
+                else:
+                    hist = model.fit(
+                        x_train, y_train_int,
+                        batch_size=params.batch_size,
+                        epochs=params.epochs,
+                        verbose=params.verbose,
+                        validation_split=0.2,
+                        class_weight=class_weight
+                    )
+
+                    split_idx = int(len(x_train) * 0.8)
+                    x_val_split = x_train[split_idx:]
+                    y_val_split_ext = y_train_ext[split_idx:]
+
+                    y_pred_train_int = model.predict(
+                        x_train, verbose=0).argmax(axis=1)
+                    y_pred_val_int = model.predict(
+                        x_val_split, verbose=0).argmax(axis=1)
+                    y_pred_train_ext = y_pred_train_int - 1
+                    y_pred_val_ext = y_pred_val_int - 1
+
+                    metrics_dict = {
+                        "train_accuracy": float(hist.history["accuracy"][-1]),
+                        "train_loss": float(hist.history["loss"][-1]),
+                        "val_accuracy": float(hist.history.get("val_accuracy", [0])[-1]),
+                        "val_loss": float(hist.history.get("val_loss", [0])[-1]),
+                        "train_f1": float(f1_score(y_train_ext, y_pred_train_ext, average="weighted")),
+                        "val_f1": float(f1_score(y_val_split_ext, y_pred_val_ext, average="weighted")),
+                    }
+                    mlflow.log_metrics(metrics_dict)
+
+                if x_test is not None and y_test is not None:
+                    y_test_ext = np.array(y_test)
+                    y_test_int = y_test_ext + \
+                        1 if np.min(y_test_ext) < 0 else y_test_ext
+
+                    ev = model.evaluate(x_test, y_test_int, verbose=0)
+                    test_loss = float(ev[0]) if isinstance(
+                        ev, (list, tuple)) else float(ev)
+                    test_acc = float(ev[1]) if isinstance(
+                        ev, (list, tuple)) and len(ev) > 1 else None
+
+                    y_pred_test_int = model.predict(
+                        x_test, verbose=0).argmax(axis=1)
+                    y_pred_test_ext = y_pred_test_int - 1
+                    test_f1 = float(
+                        f1_score(y_test_ext, y_pred_test_ext, average="weighted"))
+
+                    test_metrics = {"test_loss": test_loss, "test_f1": test_f1}
+                    if test_acc is not None:
+                        test_metrics["test_accuracy"] = test_acc
+                    mlflow.log_metrics(test_metrics)
 
         return model
 
     @staticmethod
-    def training_CNN(x_train, y_train, x_test=None, y_test=None, x_val=None, y_val=None, params_list=None):
+    def training_CNN(
+        x_train,
+        y_train,
+        x_test=None,
+        y_test=None,
+        x_val=None,
+        y_val=None,
+        params_list=None,
+        experiment_name: str = "Advanced-Trading-Strategies"
+    ):
         """
-        Trains a CNN model with given training data and hyperparameters, logging metrics to MLflow.
-        Parameters:
-            x_train : np.ndarray
-                Training feature data.
-            y_train : np.ndarray
-                Training labels.
-            x_test : np.ndarray, optional
-                Test feature data.
-            y_test : np.ndarray, optional
-                Test labels.
-            x_val : np.ndarray, optional
-                Validation feature data.
-            y_val : np.ndarray, optional
-                Validation labels.
-            params_list : list of CNN_Params
-                List of hyperparameter configurations to try.
-        Returns:
-            tf.keras.Model
-                The trained CNN model.
+        Train a 1D-CNN and log metrics and artifacts to MLflow.
+
+        Labels are expected in {-1, 0, 1} and internally shifted to {0,1,2}.
+        Class weights are computed from the original {-1,0,1} labels.
+        Input `x_train` is expected to have shape ``(N, timesteps, features)``.
+
+        Parameters
+        ----------
+        x_train : np.ndarray
+            Training sequences of shape (N, T, F).
+        y_train : np.ndarray | pd.Series
+            Training labels in {-1, 0, 1}.
+        x_test : np.ndarray, optional
+            Test sequences for final evaluation.
+        y_test : np.ndarray | pd.Series, optional
+            Test labels in {-1, 0, 1}.
+        x_val : np.ndarray, optional
+            Validation sequences.
+        y_val : np.ndarray | pd.Series, optional
+            Validation labels in {-1, 0, 1}.
+        params_list : list[CNN_Params] | CNN_Params | None
+            One or multiple configurations to try.
+        experiment_name : str, default="Advanced-Trading-Strategies"
+            MLflow experiment name.
+
+        Returns
+        -------
+        tf.keras.Model
+            The last trained CNN model.
         """
+        print("\n🚀 Entrenando modelo CNN...")
+        mlflow.set_experiment(experiment_name)
+        if not isinstance(params_list, list):
+            params_list = [params_list]
 
-        print("\n--- Entrenando CNN ---\n")
-        mlflow.tensorflow.autolog(log_models=False)
-
-        if y_train is not None:
-            y_train = y_train + 1
-
-        input_shape = x_train.shape[1:]
-        mlflow.set_experiment("Advanced-Trading-Strategies")
-
-        for p in params_list:
-            run_name = f"CNN_layers{p.conv_layers}_filters{p.filters}"
+        for params in params_list:
+            run_name = f"CNN_layers{params.conv_layers}_filters{params.filters}"
             with mlflow.start_run(run_name=run_name):
-                model = Model.model_CNN(input_shape, p)
+                mlflow.tensorflow.autolog(log_models=False)
 
-                hist = model.fit(
-                    x_train, y_train,
-                    validation_split=0.2,
-                    batch_size=p.batch_size,
-                    epochs=p.epochs,
-                    verbose=0
-                )
+                y_train_ext = np.array(y_train)
+                y_train_int = y_train_ext + \
+                    1 if np.min(y_train_ext) < 0 else y_train_ext
 
-                y_pred_train = model.predict(x_train, verbose=0).argmax(axis=1)
-                y_true_train = y_train
+                classes_ext = np.array([-1, 0, 1])
+                cw_vals = compute_class_weight(
+                    class_weight="balanced", classes=classes_ext, y=y_train_ext)
+                class_weight = {0: float(cw_vals[0]), 1: float(
+                    cw_vals[1]), 2: float(cw_vals[2])}
 
-                split_idx = int(len(x_train) * 0.8)
-                x_val_ = x_train[split_idx:]
-                y_val_ = y_train[split_idx:]
-                y_pred_val = model.predict(x_val_, verbose=0).argmax(axis=1)
+                model = Model.model_CNN(
+                    input_shape=x_train.shape[1:], params=params)
 
-                Training_Model._log_final_metrics(
-                    hist,
-                    y_true_train=y_true_train,
-                    y_pred_train=y_pred_train,
-                    y_true_val=y_val_,
-                    y_pred_val=y_pred_val,
-                )
+                if x_val is not None and y_val is not None:
+                    y_val_ext = np.array(y_val)
+                    y_val_int = y_val_ext + \
+                        1 if np.min(y_val_ext) < 0 else y_val_ext
+
+                    hist = model.fit(
+                        x_train, y_train_int,
+                        batch_size=params.batch_size,
+                        epochs=params.epochs,
+                        verbose=params.verbose,
+                        validation_data=(x_val, y_val_int),
+                        class_weight=class_weight
+                    )
+
+                    y_pred_train_int = model.predict(
+                        x_train, verbose=0).argmax(axis=1)
+                    y_pred_val_int = model.predict(
+                        x_val, verbose=0).argmax(axis=1)
+                    y_pred_train_ext = y_pred_train_int - 1
+                    y_pred_val_ext = y_pred_val_int - 1
+
+                    metrics_dict = {
+                        "train_accuracy": float(hist.history["accuracy"][-1]),
+                        "train_loss": float(hist.history["loss"][-1]),
+                        "val_accuracy": float(hist.history.get("val_accuracy", [0])[-1]),
+                        "val_loss": float(hist.history.get("val_loss", [0])[-1]),
+                        "train_f1": float(f1_score(y_train_ext, y_pred_train_ext, average="weighted")),
+                        "val_f1": float(f1_score(y_val_ext, y_pred_val_ext, average="weighted")),
+                    }
+                    mlflow.log_metrics(metrics_dict)
+
+                else:
+                    hist = model.fit(
+                        x_train, y_train_int,
+                        batch_size=params.batch_size,
+                        epochs=params.epochs,
+                        verbose=params.verbose,
+                        validation_split=0.2,
+                        class_weight=class_weight
+                    )
+
+                    split_idx = int(len(x_train) * 0.8)
+                    x_val_split = x_train[split_idx:]
+                    y_val_split_ext = y_train_ext[split_idx:]
+
+                    y_pred_train_int = model.predict(
+                        x_train, verbose=0).argmax(axis=1)
+                    y_pred_val_int = model.predict(
+                        x_val_split, verbose=0).argmax(axis=1)
+                    y_pred_train_ext = y_pred_train_int - 1
+                    y_pred_val_ext = y_pred_val_int - 1
+
+                    metrics_dict = {
+                        "train_accuracy": float(hist.history["accuracy"][-1]),
+                        "train_loss": float(hist.history["loss"][-1]),
+                        "val_accuracy": float(hist.history.get("val_accuracy", [0])[-1]),
+                        "val_loss": float(hist.history.get("val_loss", [0])[-1]),
+                        "train_f1": float(f1_score(y_train_ext, y_pred_train_ext, average="weighted")),
+                        "val_f1": float(f1_score(y_val_split_ext, y_pred_val_ext, average="weighted")),
+                    }
+                    mlflow.log_metrics(metrics_dict)
+
+                if x_test is not None and y_test is not None:
+                    y_test_ext = np.array(y_test)
+                    y_test_int = y_test_ext + \
+                        1 if np.min(y_test_ext) < 0 else y_test_ext
+
+                    ev = model.evaluate(x_test, y_test_int, verbose=0)
+                    test_loss = float(ev[0]) if isinstance(
+                        ev, (list, tuple)) else float(ev)
+                    test_acc = float(ev[1]) if isinstance(
+                        ev, (list, tuple)) and len(ev) > 1 else None
+
+                    y_pred_test_int = model.predict(
+                        x_test, verbose=0).argmax(axis=1)
+                    y_pred_test_ext = y_pred_test_int - 1
+                    test_f1 = float(
+                        f1_score(y_test_ext, y_pred_test_ext, average="weighted"))
+
+                    test_metrics = {"test_loss": test_loss, "test_f1": test_f1}
+                    if test_acc is not None:
+                        test_metrics["test_accuracy"] = test_acc
+                    mlflow.log_metrics(test_metrics)
 
         return model
-

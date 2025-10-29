@@ -1,0 +1,10 @@
+artifact_location: file:///C:/Users/ppmel/Documentos/ITESO%207mo%20Semestre/003-Advanced-Trading-Strategies/mlruns/519952775105427428/models/m-c5f0c76b18f8443f8d47604b6f361ea7/artifacts
+creation_timestamp: 1761689083389
+experiment_id: '519952775105427428'
+last_updated_timestamp: 1761689091103
+model_id: m-c5f0c76b18f8443f8d47604b6f361ea7
+model_type: null
+name: CNN_Model_artifact
+source_run_id: d1e948a867bc421ea95d5c960162994f
+status: 2
+status_message: null
