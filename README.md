@@ -1,60 +1,63 @@
-# 🧠 003 Advanced Trading Strategies: Deep Learning  
+# 003 Advanced Trading Strategies: Deep Learning  
 ### ITESO — Market Microstructure and Trading Systems  
-**Autores:**  
+
+**Authors:**  
 - José Armando Melchor Soto  
 - Rolando Fortanell Canedo  
 
 ---
 
-## 📘 Descripción General
+## Project Overview
 
-Este proyecto desarrolla una **estrategia de trading sistemática** basada en **modelos de Deep Learning** entrenados sobre **características técnicas de series de tiempo**.  
-Se implementan y comparan múltiples arquitecturas neuronales (MLP, CNN, y opcionalmente LSTM) para predecir señales de mercado:  
-- **Long (1)** → Comprar  
-- **Hold (0)** → Mantener  
-- **Short (-1)** → Vender  
+This project develops a **systematic trading strategy** based on **Deep Learning models** trained on **technical features from financial time series**.  
+Multiple neural network architectures are implemented and compared (MLP, CNN, and optionally LSTM) to predict market signals:
 
-El sistema incluye:  
-- **Ingeniería de características** (momentum, volatilidad, volumen)  
-- **Monitoreo de drift de datos**  
-- **Seguimiento de experimentos en MLflow**  
-- **Backtesting robusto** con condiciones reales de mercado  
+- **Long (1)** → Buy  
+- **Hold (0)** → Hold  
+- **Short (-1)** → Sell  
 
----
-
-## 🎯 Objetivos
-
-1. Construir una estrategia de trading sistemática con modelos de Deep Learning.  
-2. Implementar ingeniería de características para series de tiempo.  
-3. Entrenar y comparar arquitecturas **MLP** y **CNN**.  
-4. Registrar y rastrear experimentos con **MLflow**.  
-5. Monitorear **data drift** entre conjuntos de entrenamiento, prueba y validación.  
-6. Evaluar el desempeño mediante **backtesting realista** considerando comisiones, costos de préstamo y límites SL/TP.
+The system includes:
+- Feature engineering (momentum, volatility, volume)
+- Data drift monitoring
+- Experiment tracking with MLflow
+- Robust backtesting under realistic market conditions
 
 ---
 
-## 🧩 Estructura del Proyecto
+## Objectives
+
+1. Build a systematic trading strategy using Deep Learning models.  
+2. Implement feature engineering for financial time series.  
+3. Train and compare MLP and CNN architectures.  
+4. Track and register experiments using MLflow.  
+5. Monitor data drift across training, testing, and validation datasets.  
+6. Evaluate performance through realistic backtesting, including commissions, borrowing costs, and SL/TP constraints.
+
+---
+
+## Project Structure
+
 
 ```
 003-Advanced-Trading-Strategies/
 │
-├── data_processing.py          # Limpieza, ingeniería de características y normalización
-├── functions.py                # Clases de configuración, parámetros y posiciones
-├── libraries.py                # Librerías principales y configuración global
-├── metrics.py                  # Cálculo de métricas de desempeño financiero
-├── models.py                   # Definición, entrenamiento y registro de modelos DL
-├── normalization.py            # Normalización de indicadores técnicos
-├── prints.py                   # Impresión de resultados y backtesting integrado
-├── main.py                     # Ejecución principal: evaluación y backtesting final
-├── requirements.txt            # Dependencias del entorno
-└── README.md                   # Este archivo
+├── data_processing.py          
+├── functions.py                
+├── libraries.py                
+├── metrics.py                  
+├── models.py                   
+├── normalization.py            
+├── prints.py                   
+├── main.py                     
+├── requirements.txt            
+└── README.md                   
 ```
 
 ---
 
-## ⚙️ Instalación
+## Installation
 
-### 1️⃣ Crear entorno virtual
+### Create a virtual environment
 
 ```bash
 python -m venv env
@@ -62,49 +65,68 @@ source env/bin/activate     # Linux/Mac
 env\Scripts\activate      # Windows
 ```
 
-### 2️⃣ Instalar dependencias
+### Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3️⃣ Configurar MLflow (opcional)
+### MLflow setup (optional)
 
-Si deseas registrar experimentos en MLflow:
 
 ```bash
 mlflow ui
 ```
-Esto iniciará la interfaz en: [http://localhost:5000](http://localhost:5000)
+MLflow UI will be available at: [http://localhost:5000](http://localhost:5000)
 
 ---
 
-## 💾 Datos
+Data
 
-El proyecto descarga automáticamente **15 años de datos diarios** de `AAPL` desde **Yahoo Finance** usando `yfinance`.  
-No se requieren archivos externos de datos.
+The project automatically downloads 15 years of daily market data for ´AAPL´ from Yahoo Finance using ´yfinance´.
 
 ```python
 from data_processing import clean_data
 data = clean_data("AAPL", "15y")
 ```
 
-Los datos se dividen cronológicamente:
+Dataset split:
 - **60% Train**
 - **20% Test**
 - **20% Validation**
 
 ---
 
-## 🧠 Modelos de Deep Learning
+## Deep Learning Models 
 
-### 🟢 MLP — Multilayer Perceptron
-- Densas: 2 capas ocultas de 128 neuronas  
-- Activación: ReLU  
-- Salida: 3 neuronas Softmax  
-- Loss: Sparse Categorical Crossentropy  
-- Epochs: 100  
-- Batch size: 252  
+
+### MLP — Multilayer Perceptron
+
+- 2 hidden layers (128 neurons)
+
+- ReLU activation
+
+- Softmax output (3 classes)
+
+- Epochs: 100
+
+- Batch size: 252
+
+- CNN — Convolutional Neural Network
+
+- Lookback window: 20
+
+- 2 convolutional layers
+
+- 64 filters, kernel size 3
+
+- MaxPooling1D
+
+- Dense head (64 units)
+
+- Epochs: 60
+
+- Batch size: 252
 
 ### 🔵 CNN — Convolutional Neural Network
 - Lookback: 20 pasos
@@ -117,76 +139,81 @@ Los datos se dividen cronológicamente:
 
 ---
 
-## 📊 Backtesting
+## Backtesting Framework
 
-El backtesting simula operaciones con:
-- **Capital inicial:** $1,000,000  
-- **Comisión por operación:** 0.125%  
-- **Borrow rate (shorts):** 0.25% anual  
-- **SL:** 2%  
-- **TP:** 5%  
-- **Capital expuesto por operación:** 30%  
+- Initial capital: $1,000,000
 
-Resultados por split (Train, Test, Val) incluyen:
-- **Sharpe Ratio**
-- **Sortino Ratio**
-- **Calmar Ratio**
-- **Max Drawdown**
-- **Win Rate**
-- **Gráficas de crecimiento del portafolio**
+- Transaction cost: 0.125%
+
+- Borrow rate (short positions): 0.25% annually
+
+- Stop Loss: 2%
+
+- Take Profit: 5%
+
+- Capital allocation per trade: 30%
+
+### Metrics:
+
+- Sharpe Ratio
+
+- Sortino Ratio
+
+- Calmar Ratio
+
+- Maximum Drawdown
+
+- Win Rate
 
 ---
 
-## 🧪 Ejecución del Proyecto
+## Execution
 
-### 🔹 Entrenamiento (si se requiere)
+### Model Training
+
 Entrenar y registrar modelos:
 ```python
 from models import Training_Model, Model, MLP_Params, CNN_Params
-# Entrenar un MLP
+# Traning MLP
 model = Training_Model.training_MLP(x_train, y_train, x_val=x_val, y_val=y_val, params_list=MLP_Params())
 ```
 
-### 🔹 Evaluación y Backtesting
-El archivo `main.py` evalúa modelos registrados en MLflow y genera backtests automáticos:
+### Evaluation and Backtesting
+The `main.py` file evaluates models registered in MLflow and generates automated backtests.
 
 ```bash
 python main.py
 ```
 
-Salidas:
-- Métricas de desempeño por split
-- Curvas de portafolio (Train, Test, Val)
-- Resumen final de rendimiento
+---
+
+## Metrics
+
+| Metric | Description |
+|--------|-------------|
+| **Sharpe Ratio** | Risk-adjusted return using total volatility |
+| **Sortino Ratio** | Risk-adjusted return using downside risk |
+| **Max Drawdown** | Maximum loss from a portfolio peak |
+| **Calmar Ratio** | Annualized return divided by maximum drawdown |
+| **Win Rate** | Percentage of profitable trades |
 
 ---
 
-## 📈 Métricas Clave
+## MLflow Tracking
 
-| Métrica | Descripción |
-|----------|--------------|
-| **Sharpe Ratio** | Rentabilidad ajustada por riesgo total |
-| **Sortino Ratio** | Rentabilidad ajustada por riesgo a la baja |
-| **Max Drawdown** | Máxima pérdida desde un pico |
-| **Calmar Ratio** | Retorno anual / Drawdown máximo |
-| **Win Rate** | Porcentaje de operaciones ganadoras |
-
----
-
-## 🧮 MLflow Tracking
-
-Cada modelo se ejecuta en un **experimento MLflow**:
-- Nombre: `Advanced-Trading-Strategies`
-- Se registran:
-  - Hiperparámetros
-  - Métricas de train/val/test
-  - F1-score ponderado
-  - Curvas de aprendizaje
-- Modelos registrados como:
+Each model is executed within an **MLflow experiment**:
+- Experiment name: `Advanced-Trading-Strategies`
+- Logged information includes:
+  - Hyperparameters
+  - Train / validation / test metrics
+  - Weighted F1-score
+  - Learning curves
+- Registered models:
   - `MLP_Model_003`
   - `CNN_Model_003`
 
-Ejemplo de carga desde MLflow:
+Example of loading a model from MLflow:
+
 ```python
 from models import model_name_version
 mlp = model_name_version("MLP_Model_003", "7")
@@ -194,20 +221,20 @@ mlp = model_name_version("MLP_Model_003", "7")
 
 ---
 
-## 🔍 Resultados Finales
+## Final Results
 
-| Modelo | Split | Final Portfolio | Sharpe | Sortino | Calmar | MDD | Win Rate |
-|---------|--------|----------------|--------|----------|---------|-----|-----------|
-| **MLP** | Train | $1.44M | + | + | + | ↓12% | 57% |
-| **MLP** | Test | $1.19M | + | + | + | ↓15% | 55% |
-| **CNN** | Train/Test | ↓50% | - | - | - | ↑58% | <30% |
+| Model | Split | Final Portfolio | Sharpe | Sortino | Calmar | Max DD | Win Rate |
+|-------|--------|----------------|--------|----------|---------|---------|----------|
+| **MLP** | Train | $1.44M | + | + | + | -12% | 57% |
+| **MLP** | Test | $1.19M | + | + | + | -15% | 55% |
+| **CNN** | Train/Test | $0.50M | - | - | - | -58% | <30% |
 
-✅ **Conclusión:**  
-El modelo **MLP** fue más estable y rentable, mientras que la **CNN** no logró generalizar adecuadamente.
+**Conclusion:**  
+The **MLP model** was more stable and profitable, while the **CNN** failed to generalize adequately.
 
 ---
 
-## 🧾 Bibliografía
+## References
 
 - Sharpe, W. F. (1966). *Mutual fund performance.* *Journal of Business.*  
 - Sortino, F. A., & Price, L. N. (1994). *Performance measurement in a downside risk framework.*  
@@ -216,7 +243,7 @@ El modelo **MLP** fue más estable y rentable, mientras que la **CNN** no logró
 
 ---
 
-## 🛠️ Tecnologías
+## Technologies
 
 - **Python 3.11+**  
 - **TensorFlow / Keras**  
