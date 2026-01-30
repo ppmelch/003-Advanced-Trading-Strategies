@@ -128,7 +128,7 @@ Dataset split:
 
 - Batch size: 252
 
-### 🔵 CNN — Convolutional Neural Network
+### CNN — Convolutional Neural Network
 - Lookback: 20 pasos
 - Capas convolucionales: 2  
 - Filtros: 64, Kernel: 3  
